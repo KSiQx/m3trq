@@ -24,9 +24,15 @@
 .vscode/
 venv/
 env/
-staticfiles/
 __pycache__/
 logs/
+config/
+metrq_dj/staticfiles/
+metrq_dj/.env
+metrq_dj/metrq_site/asgi.py
+metrq_dj/metrq_site/settings.py
+metrq_dj/metrq_site/urls.py
+metrq_dj/metrq_site/wsgi.py
 
 celerybeat-schedule
 

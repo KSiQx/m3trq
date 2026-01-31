@@ -10,6 +10,10 @@
 *.json
 
 *.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 *.log
 *.tmp
 *.temp

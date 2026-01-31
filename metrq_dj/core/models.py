@@ -1,7 +1,12 @@
 import uuid
+import hashlib
+import secrets
+from datetime import timedelta
+
 from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 
 
 class RateLimit(models.Model):
@@ -223,3 +228,67 @@ class ProviderLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} - {self.level}: {self.message[:50]}"
+
+
+class ProviderApiKey(models.Model):
+    """ Hashed storage of provider API keys """
+    name = models.CharField(max_length=100)
+    key_hash = models.CharField(max_length=64, unique=True)  # SHA-256
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    request_count = models.IntegerField(default=0)
+    last_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_active', 'expires_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({'active' if self.is_active else 'inactive'})"
+
+    @classmethod
+    def create_key(cls, name: str) -> str:
+        """ Create a new API key """
+        raw_key = secrets.token_urlsafe(32)
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
+        cls.objects.create(
+            name=name,
+            key_hash=key_hash,
+            expires_at=timezone.now() + timedelta(days=90)
+        )
+
+        return raw_key
+
+    @classmethod
+    def validate_key(cls, api_key: str) -> bool:
+        """ Check API key """
+        if not api_key:
+            return False
+
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+
+        try:
+            key_record = cls.objects.get(
+                key_hash=key_hash,
+                is_active=True
+            )
+
+            # Check expiration date
+            if key_record.expires_at and key_record.expires_at < timezone.now():
+                key_record.is_active = False
+                key_record.save()
+                return False
+
+            # Update metrics
+            key_record.last_used_at = timezone.now()
+            key_record.request_count += 1
+            key_record.save()
+
+            return True
+
+        except cls.DoesNotExist:
+            return False

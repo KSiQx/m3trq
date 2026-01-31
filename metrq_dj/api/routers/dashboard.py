@@ -6,6 +6,7 @@ from ninja.security import HttpBearer
 from ninja_jwt.authentication import JWTAuth
 from core.models import Article
 
+
 router = Router(tags=["Dashboard"], auth=JWTAuth())
 
 

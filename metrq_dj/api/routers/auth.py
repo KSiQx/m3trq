@@ -19,7 +19,7 @@ class RegisterSchema(Schema):
     password: str
     tier: str = "free"
 
-    @validator('nickname')
+    @validator('nickname')   # Problem: [‘@validator’ is marked as deprecated]
     def validate_nickname(cls, v):
         if len(v) < 3 or len(v) > 50:
             raise ValueError('Nickname must be between 3 and 50 characters')
@@ -118,7 +118,7 @@ def register(request, data: RegisterSchema):
         )
 
         # Update profile tier (created by signal)
-        profile = user.profile
+        profile = user.profile   # Problem: [‘profile’ marked as unresolved attribute reference for class 'User' in PyCharm IDE]
         profile.tier = data.tier
         if data.tier == 'free':
             profile.max_reports = 1
@@ -132,8 +132,9 @@ def register(request, data: RegisterSchema):
         refresh = RefreshToken.for_user(user)
 
         return 201, {
-            "user_id": str(user.id),
-            "token": str(refresh.access_token),
+            "user_id": str(user.id),   # Problem: [‘id’ marked as unresolved attribute reference for class 'User' in PyCharm IDE]
+            "token": str(refresh.access_token),  # Problem: [‘access_token’ marked as unresolved attribute reference for class 'Token' in PyCharm IDE]
+
             "tier": profile.tier
         }
 

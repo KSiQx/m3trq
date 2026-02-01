@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    command: >
+      sh -c "ollama serve & 
+             sleep 10 && 
+             ollama pull qwen2.5-coder:1.5b && 
+             wait"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OLLAMA_HOST=http://ollama:11434
+      - DEEPL_API_KEY=${DEEPL_API_KEY}
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+    volumes:
+      - ./config:/app/config:ro
+      - ./metrq_dj:/app/metrq_dj:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    deploy:
+      replicas: 2  # Scale to 5 for production
+    command: celery -A worker.tasks.batch worker --loglevel=INFO --concurrency=1
+
+  # Optional: Beat scheduler
+  beat:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+    volumes:
+      - ./config:/app/config:ro
+      - ./metrq_dj:/app/metrq_dj:ro
+    depends_on:
+      - redis
+    command: celery -A worker.tasks.batch beat --loglevel=INFO
+
+volumes:
+  redis_data:
+  ollama_data:

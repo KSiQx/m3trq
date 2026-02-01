@@ -7,6 +7,8 @@
 *.sqlite
 *.sqlite3
 *.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
 *.json
 
 *.pyc
@@ -32,6 +34,8 @@ __pycache__/
 logs/
 config/
 metrq_dj/staticfiles/
+metrq_dj/accounts/migrations
+metrq_dj/core/migrations
 metrq_dj/.env
 metrq_dj/metrq_site/asgi.py
 metrq_dj/metrq_site/settings.py

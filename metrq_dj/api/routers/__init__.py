@@ -1,19 +1,50 @@
-# metrq_dj/api/routers/__init__.py
-from .auth import router as auth_router
-from .dashboard import router as dashboard_router
-from .reports import router as reports_router
-from .provider import router as provider_router
-from .health import router as health_router
+# # /m3trq/metrq_dj/api/routers/__init__.py
+# from ninja import NinjaAPI
+#
+# # Initialize API first
+# api = NinjaAPI(
+#     title="MetrQ API",
+#     version="1.0.0",
+#     description="News Analytics SaaS API",
+#     urls_namespace="api"
+# )
+#
+# # Import routers after api initialization
+# from .auth import router as auth_router
+# from .dashboard import router as dashboard_router
+# from .reports import router as reports_router
+# from .provider import router as provider_router
+# from .health import router as health_router
+#
+# # Register routers (REMOVED NinjaJWTDefaultController - using custom auth instead)
+# api.add_router("/auth", auth_router)
+# api.add_router("/dashboard", dashboard_router)
+# api.add_router("/reports", reports_router)
+# api.add_router("/provider", provider_router)
+# api.add_router("/health", health_router)
+#
+#
 
-__all__ = [
-    'auth_router',
-    'dashboard_router',
-    'reports_router',
-    'provider_router',
-    'health_router',
-]
+
+# metrq_dj/api/routers/__init__.py
+# from .auth import router as auth_router
+# from .dashboard import router as dashboard_router
+# from .reports import router as reports_router
+# from .provider import router as provider_router
+# from .health import router as health_router
+#
+# __all__ = [
+#     'auth_router',
+#     'dashboard_router',
+#     'reports_router',
+#     'provider_router',
+#     'health_router',
+# ]
+
 # from ninja import NinjaAPI
 # from ninja_jwt.controller import NinjaJWTDefaultController
+# from .dashboard import router as dashboard_router
+#
 #
 # api = NinjaAPI(
 #     title="MetrQ API",

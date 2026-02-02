@@ -64,6 +64,25 @@ services:
       - redis
     command: celery -A worker.tasks.batch beat --loglevel=INFO
 
+  db_writer:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      - SQLITE_PATH=/data/db.sqlite3
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+    volumes:
+      - sqlite_data:/data
+      - ./modules:/app/modules:ro
+    depends_on:
+      - redis
+      - api
+    command: python -m modules.analytics.storage  # Run standalone
+    # OR use Celery: command: celery -A worker.celery worker -Q db_writer -P solo
+
 volumes:
   redis_data:
   ollama_data:
+  sqlite_data:
+

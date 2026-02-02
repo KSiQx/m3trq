@@ -6,7 +6,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from ninja import Router, Schema
 from ninja_jwt.tokens import RefreshToken
-from pydantic import validator
+from pydantic import field_validator
+
 
 router = Router(tags=["Authentication"])
 
@@ -19,7 +20,7 @@ class RegisterSchema(Schema):
     password: str
     tier: str = "free"
 
-    @validator('nickname')   # Problem: [‘@validator’ is marked as deprecated]
+    @field_validator('nickname')   # Problem: [‘@validator’ is marked as deprecated]
     def validate_nickname(cls, v):
         if len(v) < 3 or len(v) > 50:
             raise ValueError('Nickname must be between 3 and 50 characters')
@@ -27,13 +28,13 @@ class RegisterSchema(Schema):
             raise ValueError('Nickname must be alphanumeric')
         return v
 
-    @validator('password')
+    @field_validator('password')
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters')
         return v
 
-    @validator('tier')
+    @field_validator('tier')
     def validate_tier(cls, v):
         if v not in ['free', 'pro', 'enterprise']:
             raise ValueError('Invalid tier')

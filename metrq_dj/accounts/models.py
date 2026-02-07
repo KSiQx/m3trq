@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 
 
 class Profile(models.Model):
@@ -38,6 +39,11 @@ class Profile(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.tier}"
 
+    def save(self, *args, **kwargs):
+        # Set max_reports based on the current tariff
+        self.max_reports = settings.TIER_REPORT_LIMITS.get(self.tier, 1)
+        super().save(*args, **kwargs)
+
     @property
     def reports_remaining(self):
         """Calculate remaining reports for the user"""
@@ -51,16 +57,4 @@ class Profile(models.Model):
             return True
         return self.reports_used < self.max_reports
 
-
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    """Auto-create profile when user is created"""
-    if created:
-        Profile.objects.create(user=instance)
-
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    """Save profile when user is saved"""
-    instance.profile.save()
     

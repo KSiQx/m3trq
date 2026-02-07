@@ -18,9 +18,9 @@ services:
     ports:
       - "11434:11434"
     command: >
-      sh -c "ollama serve & 
-             sleep 10 && 
-             ollama pull qwen2.5-coder:1.5b && 
+      sh -c "ollama serve &
+             sleep 10 &&
+             ollama pull qwen2.5-coder:1.5b &&
              wait"
     healthcheck:
       test: ["CMD", "ollama", "list"]
@@ -37,6 +37,9 @@ services:
       - OLLAMA_HOST=http://ollama:11434
       - DEEPL_API_KEY=${DEEPL_API_KEY}
       - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=INFO
     volumes:
       - ./config:/app/config:ro
       - ./metrq_dj:/app/metrq_dj:ro
@@ -47,9 +50,8 @@ services:
         condition: service_healthy
     deploy:
       replicas: 2  # Scale to 5 for production
-    command: celery -A worker.tasks.batch worker --loglevel=INFO --concurrency=1
+    command: celery -A worker.celeryconfig worker --loglevel=${LOG_LEVEL} --concurrency=1 --pool=prefork -Q reports_fast,reports_slow,default,batch,provider
 
-  # Optional: Beat scheduler
   beat:
     build:
       context: .
@@ -57,12 +59,14 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./config:/app/config:ro
       - ./metrq_dj:/app/metrq_dj:ro
     depends_on:
       - redis
-    command: celery -A worker.tasks.batch beat --loglevel=INFO
+    command: celery -A worker.celeryconfig beat --loglevel=INFO
 
   db_writer:
     build:
@@ -72,17 +76,16 @@ services:
       - SQLITE_PATH=/data/db.sqlite3
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - sqlite_data:/data
       - ./modules:/app/modules:ro
     depends_on:
       - redis
-      - api
-    command: python -m modules.analytics.storage  # Run standalone
-    # OR use Celery: command: celery -A worker.celery worker -Q db_writer -P solo
+    command: celery -A worker.celeryconfig worker -Q db_writer -P solo
 
 volumes:
   redis_data:
   ollama_data:
   sqlite_data:
-

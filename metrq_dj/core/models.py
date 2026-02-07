@@ -155,8 +155,12 @@ class Article(models.Model):
 class Report(models.Model):
     """Generated reports storage"""
     TYPE_CHOICES = [
+        ('daily', 'Daily'),
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('semi_annual', 'Semi_annual'),
+        ('annual', 'Annual')
     ]
     FORMAT_CHOICES = [
         ('pdf', 'PDF'),

@@ -403,7 +403,6 @@ def get_rate_limit_status(request):
     remaining = float('inf') if limit == float('inf') else max(0, limit - used)
     reset_at = timezone.make_aware(
         datetime.combine(today + timedelta(days=1), datetime.min.time()),
-        timezone=timezone.utc
     )
     # reset_at = datetime.combine(today + timedelta(days=1), datetime.min.time())
     # reset_at = reset_at.replace(tzinfo=timezone.utc)

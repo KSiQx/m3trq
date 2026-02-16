@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetrQ News Analytics - Professional News Intelligence Platform</title>
+    <meta name="description" content="MetrQ News Analytics - Professional news monitoring and analytics platform with multi-language support">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Heroicons -->
+    <script src="https://unpkg.com/heroicons@2.0.18/20/solid/index.js" type="module"></script>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* LED green glow effects */
+        .led-glow {
+            box-shadow: 0 0 10px #39FF14, 0 0 20px rgba(57, 255, 20, 0.5);
+        }
+        .led-glow-hover:hover {
+            box-shadow: 0 0 15px #7CFC00, 0 0 30px rgba(124, 252, 0, 0.6);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+        .led-glow-sm {
+            box-shadow: 0 0 5px #39FF14, 0 0 10px rgba(57, 255, 20, 0.3);
+        }
+        .led-glow-sm-hover:hover {
+            box-shadow: 0 0 8px #7CFC00, 0 0 15px rgba(124, 252, 0, 0.4);
+        }
+
+        /* Grid overlay for dark lab ambiance */
+        .grid-overlay {
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        /* Vignette effect */
+        .vignette {
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Animated gradient background */
+        .animated-bg {
+            background: linear-gradient(135deg, #111111 0%, #1A1A1A 50%, #0D1F0D 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Pulse animation for LED elements */
+        @keyframes ledPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .led-pulse {
+            animation: ledPulse 2s ease-in-out infinite;
+        }
+
+        /* Card hover lift effect */
+        .card-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-lift:hover {
+            transform: translateY(-4px);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #39FF14;
+        }
+
+        /* Pricing card featured badge */
+        .popular-badge {
+            background: linear-gradient(135deg, #39FF14, #00FF41);
+            color: #000;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body class="bg-[#111111] text-white min-h-full animated-bg relative">
+    <!-- Grid overlay -->
+    <div class="fixed inset-0 grid-overlay z-0"></div>
+
+    <!-- Vignette overlay -->
+    <div class="fixed inset-0 vignette z-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#111111]/90 border-b border-[#333333]/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                        <span class="text-black font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">
+                        MetrQ <span class="text-[#39FF14]">News Analytics</span>
+                    </span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#about" class="text-gray-300 hover:text-[#39FF14] transition-colors duration-200 text-sm font-medium">About</a>
+                    <a href="#services" class="text-gray-300 hover:text-[#39FF14] transition-colors duration-200 text-sm font-medium">Services</a>
+                    <a href="#pricing" class="text-gray-300 hover:text-[#39FF14] transition-colors duration-200 text-sm font-medium">Pricing</a>
+                    <a href="#privacy" class="text-gray-300 hover:text-[#39FF14] transition-colors duration-200 text-sm font-medium">Privacy Policy</a>
+                </nav>
+
+                <!-- Sign in button -->
+                <div class="hidden md:block">
+                    <a href="/login/" class="inline-flex items-center px-4 py-2 border border-[#39FF14] text-[#39FF14] rounded-lg hover:bg-[#39FF14] hover:text-black transition-all duration-300 text-sm font-medium led-glow-sm-hover">
+                        Sign in for registered users
+                    </a>
+                </div>
+
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-button" class="md:hidden text-white focus:outline-none p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile menu dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden absolute top-16 left-0 right-0 bg-[#1A1A1A] border-t border-[#39FF14]/30 backdrop-blur-md">
+            <div class="px-4 py-4 space-y-3">
+                <a href="#about" class="block text-gray-300 hover:text-[#39FF14] py-2 transition-colors">About</a>
+                <a href="#services" class="block text-gray-300 hover:text-[#39FF14] py-2 transition-colors">Services</a>
+                <a href="#pricing" class="block text-gray-300 hover:text-[#39FF14] py-2 transition-colors">Pricing</a>
+                <a href="#privacy" class="block text-gray-300 hover:text-[#39FF14] py-2 transition-colors">Privacy Policy</a>
+                <a href="/login/" class="block w-full text-center px-4 py-2 border border-[#39FF14] text-[#39FF14] rounded-lg hover:bg-[#39FF14] hover:text-black transition-all duration-300 text-sm font-medium mt-4">
+                    Sign in
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative z-10 pt-16">
+        <!-- Hero Section -->
+        <section class="min-h-screen flex items-center justify-center relative overflow-hidden">
+            <!-- Abstract tech background elements -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-[#39FF14]/5 rounded-full blur-3xl"></div>
+                <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#00FF41]/5 rounded-full blur-3xl"></div>
+                <!-- Network lines SVG -->
+                <svg class="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+                            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#39FF14" stroke-width="0.5"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+            </div>
+
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+                <p class="text-[#7CFC00] text-sm font-medium tracking-widest uppercase mb-4 led-pulse">
+                    Be a member of the analytical community
+                </p>
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
+                    Get access to <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#39FF14] to-[#7CFC00]">special pro features</span>
+                </h1>
+                <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
+                    Professional news analytics platform with multi-language monitoring,
+                    sentiment analysis, and real-time intelligence reports.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button onclick="showRegistrationNotice('pro')" class="px-8 py-4 bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black font-bold rounded-lg text-lg led-glow led-glow-hover flex items-center space-x-2">
+                        <span>Be Pro</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </button>
+                    <a href="#services" class="px-8 py-4 border border-[#333333] text-white rounded-lg hover:border-[#39FF14] hover:text-[#39FF14] transition-all duration-300 text-lg font-medium">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+
+            <!-- Scroll indicator -->
+            <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+                <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                </svg>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="services" class="py-24 relative">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+                        Why Choose <span class="text-[#39FF14]">MetrQ</span>
+                    </h2>
+                    <div class="w-24 h-1 bg-gradient-to-r from-[#39FF14] to-[#00FF41] mx-auto rounded-full"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Feature 1: Anywhere Access -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Anywhere Access</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Доступ из офиса и с мобильных устройств. Никаких установок, только ваш браузер.
+                        </p>
+                    </div>
+
+                    <!-- Feature 2: Privacy First -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Privacy First</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Анонимность по умолчанию. Мы не собираем личные данные и не знаем вашего имени.
+                        </p>
+                    </div>
+
+                    <!-- Feature 3: Encrypted & Local -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Encrypted & Local</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Данные аутентификации хешированы. Весь рабочий процесс остается в вашем браузере.
+                        </p>
+                    </div>
+
+                    <!-- Feature 4: Smart Filtering -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Smart Filtering</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Интеллектуальная обработка новостного потока и отсеивание информационного мусора.
+                        </p>
+                    </div>
+
+                    <!-- Feature 5: Analytical Context -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Analytical Context</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Не просто новости, а аналитика и тематические доклады для принятия решений.
+                        </p>
+                    </div>
+
+                    <!-- Feature 6: Enterprise Scalability -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">Enterprise Scalability</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Индивидуальная адаптация сервисов под нужды вашей компании и расширенный функционал.
+                        </p>
+                    </div>
+
+                    <!-- Feature 7: 24/7 Global Monitoring -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-xl p-6 card-lift led-glow-sm-hover group md:col-span-2 lg:col-span-1">
+                        <div class="w-12 h-12 bg-[#39FF14]/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-[#39FF14]/20 transition-colors">
+                            <svg class="w-6 h-6 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-white mb-2">24/7 Global Monitoring</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">
+                            Мониторинг десятков источников региональных СМИ в режиме реального времени.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="py-24 relative">
+            <div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#39FF14]/5 to-transparent pointer-events-none"></div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+                        Choose Your <span class="text-[#39FF14]">Plan</span>
+                    </h2>
+                    <p class="text-gray-400 max-w-2xl mx-auto">
+                        Select the tier that fits your needs. Upgrade anytime as your requirements grow.
+                    </p>
+                    <div class="w-24 h-1 bg-gradient-to-r from-[#39FF14] to-[#00FF41] mx-auto rounded-full mt-4"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    <!-- Free Tier -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 card-lift relative">
+                        <h3 class="text-xl font-bold text-white mb-2">Free</h3>
+                        <div class="flex items-baseline mb-6">
+                            <span class="text-4xl font-extrabold text-white">$0</span>
+                            <span class="text-gray-400 ml-2">/month</span>
+                        </div>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                1 report/month
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Basic analytics
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                24h data access
+                            </li>
+                            <li class="flex items-center text-gray-500 text-sm">
+                                <svg class="w-5 h-5 text-[#333333] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Limited languages
+                            </li>
+                        </ul>
+                        <button onclick="showRegistrationNotice('free')" class="w-full py-3 px-4 border border-[#39FF14] text-[#39FF14] rounded-lg hover:bg-[#39FF14] hover:text-black transition-all duration-300 font-medium led-glow-sm-hover">
+                            Get Started
+                        </button>
+                    </div>
+
+                    <!-- Pro Tier (Featured) -->
+                    <div class="bg-[#1E1E1E] border-2 border-[#39FF14] rounded-2xl p-8 card-lift relative led-glow">
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                            <span class="popular-badge px-4 py-1 rounded-full text-xs">Popular</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Pro</h3>
+                        <div class="flex items-baseline mb-6">
+                            <span class="text-4xl font-extrabold text-[#39FF14]">$29</span>
+                            <span class="text-gray-400 ml-2">/month</span>
+                        </div>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                10 reports/month
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Advanced analytics
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                All languages
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Priority support
+                            </li>
+                        </ul>
+                        <button onclick="showRegistrationNotice('pro')" class="w-full py-3 px-4 bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black rounded-lg hover:opacity-90 transition-all duration-300 font-bold led-glow-hover">
+                            Be Pro
+                        </button>
+                    </div>
+
+                    <!-- Enterprise Tier -->
+                    <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 card-lift relative">
+                        <h3 class="text-xl font-bold text-white mb-2">Enterprise</h3>
+                        <div class="flex items-baseline mb-6">
+                            <span class="text-4xl font-extrabold text-[#39FF14]">Custom</span>
+                        </div>
+                        <ul class="space-y-4 mb-8">
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Unlimited reports
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Custom integration
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                SLA guarantee
+                            </li>
+                            <li class="flex items-center text-gray-300 text-sm">
+                                <svg class="w-5 h-5 text-[#39FF14] mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Dedicated support
+                            </li>
+                        </ul>
+                        <button onclick="showRegistrationNotice('enterprise')" class="w-full py-3 px-4 border border-[#39FF14] text-[#39FF14] rounded-lg hover:bg-[#39FF14] hover:text-black transition-all duration-300 font-medium led-glow-sm-hover">
+                            Contact Sales
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="py-24 relative">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+                    About <span class="text-[#39FF14]">MetrQ</span>
+                </h2>
+                <p class="text-gray-400 text-lg leading-relaxed mb-8">
+                    MetrQ News Analytics is a professional platform designed for analysts, researchers,
+                    and organizations that need comprehensive multi-language news monitoring. Our advanced
+                    sentiment analysis, entity extraction, and bias detection capabilities provide
+                    actionable intelligence from global news sources.
+                </p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mt-12">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-[#39FF14]">20+</div>
+                        <div class="text-gray-400 text-sm mt-1">News Sources</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-[#39FF14]">4</div>
+                        <div class="text-gray-400 text-sm mt-1">Languages</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-[#39FF14]">500+</div>
+                        <div class="text-gray-400 text-sm mt-1">Articles/Hour</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-[#39FF14]">24/7</div>
+                        <div class="text-gray-400 text-sm mt-1">Monitoring</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Privacy Section -->
+        <section id="privacy" class="py-24 relative">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 md:p-12">
+                    <h2 class="text-3xl font-bold text-white mb-6 text-center">
+                        Privacy <span class="text-[#39FF14]">Policy</span>
+                    </h2>
+                    <div class="space-y-4 text-gray-400">
+                        <p>
+                            At MetrQ, we take your privacy seriously. Our platform is designed with
+                            privacy-by-default principles:
+                        </p>
+                        <ul class="space-y-2 list-disc list-inside">
+                            <li>We do not collect personal identifiable information beyond your chosen nickname</li>
+                            <li>All authentication data is hashed using industry-standard bcrypt</li>
+                            <li>Your analytical workflows remain private and are not shared with third parties</li>
+                            <li>We do not use tracking cookies or analytics that identify individual users</li>
+                            <li>Data retention follows strict policies with automatic purging after specified periods</li>
+                        </ul>
+                        <p class="text-sm text-gray-500 mt-4">
+                            For complete privacy policy details, please contact us at info@metrq.com
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#0A0A0A] border-t border-[#39FF14]/30 py-12 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <!-- Brand -->
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                            <span class="text-black font-bold text-lg">M</span>
+                        </div>
+                        <span class="text-xl font-bold text-white">MetrQ</span>
+                    </div>
+                    <p class="text-gray-400 text-sm max-w-sm">
+                        Professional news analytics platform with multi-language monitoring,
+                        sentiment analysis, and real-time intelligence.
+                    </p>
+                </div>
+
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#about" class="text-gray-400 hover:text-[#39FF14] text-sm transition-colors">About</a></li>
+                        <li><a href="#services" class="text-gray-400 hover:text-[#39FF14] text-sm transition-colors">Services</a></li>
+                        <li><a href="#pricing" class="text-gray-400 hover:text-[#39FF14] text-sm transition-colors">Pricing</a></li>
+                        <li><a href="#privacy" class="text-gray-400 hover:text-[#39FF14] text-sm transition-colors">Privacy Policy</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact -->
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Contact</h4>
+                    <ul class="space-y-2">
+                        <li class="text-gray-400 text-sm">info@metrq.com</li>
+                        <li class="flex space-x-4 mt-4">
+                            <a href="#" class="text-gray-400 hover:text-[#39FF14] transition-colors">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                                </svg>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-[#39FF14] transition-colors">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                </svg>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-[#39FF14] transition-colors">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                </svg>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-[#333333] pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">
+                    © 2025 MetrQ News Analytics. All rights reserved.
+                </p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="#" class="text-gray-500 hover:text-[#39FF14] text-sm transition-colors">Legal Terms</a>
+                    <a href="#privacy" class="text-gray-500 hover:text-[#39FF14] text-sm transition-colors">Privacy</a>
+                    <a href="#" class="text-gray-500 hover:text-[#39FF14] text-sm transition-colors">Cookies</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Temporary registration notice (Phase 2 Task 7 will implement actual registration)
+        function showRegistrationNotice(tier) {
+            alert(`🚧 Registration for ${tier} tier will be available in Phase 2 Task 7`);
+            // Store selected tier for future implementation
+            localStorage.setItem('selected_tier', tier);
+            console.log(`User selected tier: ${tier}`);
+        }
+
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            if (menuButton && mobileMenu) {
+                menuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+
+                // Close mobile menu when clicking a link
+                const mobileLinks = mobileMenu.querySelectorAll('a');
+                mobileLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        mobileMenu.classList.add('hidden');
+                    });
+                });
+            }
+
+            // TODO: Phase 2 Task 7 - Check if user is already authenticated
+            // and update UI accordingly (show dashboard link instead of login)
+            const token = localStorage.getItem('metrq_token');
+            if (token) {
+                // User is authenticated - could replace login button with dashboard link
+                console.log('User already authenticated');
+                // Example: Replace sign in button with dashboard link
+                // const signInBtn = document.querySelector('a[href="/login/"]');
+                // if (signInBtn) {
+                //     signInBtn.textContent = 'Dashboard';
+                //     signInBtn.href = '/dashboard/';
+                // }
+            }
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -6,10 +6,13 @@ from ninja_jwt.tokens import RefreshToken
 def jwt_payload_handler(user):
     """Generating a Custom Payload for a JWT Token"""
     refresh = RefreshToken.for_user(user)
-    profile = getattr(user, 'profile', None)
+    # profile = getattr(user, 'profile', None)
 
     # We add data to the token to avoid accessing the database for each request.
-    tier = getattr(profile, 'tier', 'free') if profile else 'free'
+    tier = 'free'
+    if hasattr(user, 'profile'):
+        tier = user.profile.tier
+    # tier = getattr(profile, 'tier', 'free') if profile else 'free'
     refresh.payload['tier'] = tier
 
     # HERE: You can add other important IDs or flags.

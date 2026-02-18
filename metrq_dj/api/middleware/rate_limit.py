@@ -1,31 +1,78 @@
-# import hashlib
-# import logging
-# import time
-#
-# from datetime import datetime, time, timedelta, timezone as dt_timezone
-# from django.http import JsonResponse
-# from django.conf import settings
-# from django.core.cache import cache
-# from django.utils import timezone
-# from django.contrib.auth import get_user_model
-#
-# from core.models import RateLimit
-#
-#
-# logger = logging.getLogger(__name__)
-
-
 import logging
-from datetime import datetime, timedelta, timezone as dt_timezone
+import time
+from functools import wraps
+from datetime import datetime, timedelta
+from datetime import timezone as datetime_timezone
 from django.http import JsonResponse
 from django.conf import settings
 from django.db import transaction, connection
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.db import OperationalError, IntegrityError
+from django.core.exceptions import ObjectDoesNotExist
+
+# from django.core.cache import cache  # Use with redis
 
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
+
+# Добавьте в начало файла
+from collections import defaultdict
+from threading import Lock
+
+
+class RateLimitMetrics:
+    def __init__(self):
+        self.lock_stats = defaultdict(int)
+        self._lock = Lock()
+
+    def increment_lock(self, lock_type='database'):
+        with self._lock:
+            self.lock_stats[lock_type] += 1
+
+    def get_stats(self):
+        with self._lock:
+            return dict(self.lock_stats)
+
+
+rate_limit_metrics = RateLimitMetrics()
+
+
+def retry_on_db_lock(max_retries=5, base_delay=0.05):
+    """Декоратор для повторных попыток при блокировке БД"""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (OperationalError, IntegrityError) as e:
+                    error_str = str(e).lower()
+                    if ('database is locked' in error_str or
+                        'database table is locked' in error_str or
+                        'unique constraint' in error_str) and attempt < max_retries - 1:
+
+                        # Добавляем метрику для database is locked
+                        if 'database is locked' in error_str:
+                            rate_limit_metrics.increment_lock('database_locked')
+                        elif 'database table is locked' in error_str:
+                            rate_limit_metrics.increment_lock('table_locked')
+                        elif 'unique constraint' in error_str:
+                            rate_limit_metrics.increment_lock('unique_violation')
+
+                        delay = base_delay * (2 ** attempt) + (base_delay * 0.1 * (attempt + 1))
+                        logger.info(f"DB contention, retry {attempt + 1}/{max_retries} after {delay:.3f}s: {e}")
+                        time.sleep(delay)
+                    else:
+                        logger.error(f"DB operation failed after {attempt + 1} attempts: {e}")
+                        raise
+            return None
+
+        return wrapper
+
+    return decorator
 
 
 class RateLimitMiddleware:
@@ -99,379 +146,124 @@ class RateLimitMiddleware:
 
         return response
 
+    @retry_on_db_lock(max_retries=3, base_delay=0.05)
     def _get_user_from_request(self, request):
-        """Extract user from JWT token"""
-        from ninja_jwt.authentication import JWTAuth
+        """Extract user from JWT token using AccessToken directly"""
+        from ninja_jwt.tokens import AccessToken
+
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return None
 
         try:
-            auth = JWTAuth()
-            result = auth.authenticate(request)
-            if result:
-                return request.user  # JWTAuth sets request.user
+            token_str = auth_header.split(' ')[1]
+            token = AccessToken(token_str)
+            user_id = token.get('user_id')
+            user = User.objects.select_related('profile').get(id=user_id)
+            return user
         except Exception as e:
             logger.debug(f"Auth error in rate limit: {e}")
-
-        return None
+            return None
 
     def _get_reset_time(self):
         """Get UTC midnight reset time as a timezone-aware datetime"""
         # Get tomorrow's date
         tomorrow = timezone.now().date() + timedelta(days=1)
-        # Create naive midnight datetime
-        midnight_naive = datetime.combine(tomorrow, datetime.min.time())
-        # Make it UTC-aware
-        return timezone.make_aware(midnight_naive, timezone=timezone.utc)
+        # Create UTC midnight datetime directly (without make_aware)
+        return datetime.combine(tomorrow, datetime.min.time(), tzinfo=datetime_timezone.utc)
 
+    @retry_on_db_lock(max_retries=10, base_delay=0.05)
     def _check_and_increment(self, user, tier, limit):
         """
-        Atomic check and increment using database only.
-        SQLite: Uses UPDATE...RETURNING with BEGIN IMMEDIATE
-        PostgreSQL: Uses select_for_update()
+        Универсальная версия, работающая на всех БД.
+        Django сам выберет правильный уровень изоляции.
         """
+        from core.models import RateLimit
+        from django.db.models import F
+        # Import OperationalError specifically to handle it correctly
+        from django.db import OperationalError
+
         today = timezone.now().date()
         reset_time = self._get_reset_time()
 
+        if tier == 'enterprise':
+            return True, float('inf'), reset_time
+
         try:
+            # 1. Get or Create the record.
+            # We use a transaction to ensure get_or_create is safe,
+            # but we do NOT use select_for_update to avoid locking the DB file.
             with transaction.atomic():
-                if connection.vendor == 'sqlite':
-                    # SQLite path with atomic UPDATE...RETURNING
-                    with connection.cursor() as cursor:
-                        cursor.execute('BEGIN IMMEDIATE')
+                rate_limit, created = RateLimit.objects.get_or_create(
+                    user=user,
+                    request_date=today,
+                    defaults={'request_count': 0}
+                )
+            # 2. Atomic Increment with Limit Check
+            # This performs the check "count < limit" and the increment "count + 1"
+            # in a single SQL query. This is very fast and minimizes lock time.
+            updated = RateLimit.objects.filter(
+                user=user,
+                request_date=today,
+                request_count__lt=limit
+            ).update(request_count=F('request_count') + 1)
 
-                        # Try to update existing record
-                        cursor.execute(
-                            """UPDATE core_ratelimit
-                               SET request_count = request_count + 1
-                               WHERE user_id = %s AND request_date = %s
-                               RETURNING request_count""",
-                            [user.id, today]
-                        )
-                        row = cursor.fetchone()
+            if updated:
+                # If update returned 1, the increment was successful.
+                # We must refresh the object to get the new value from the DB.
+                rate_limit.refresh_from_db()
+                remaining = limit - rate_limit.request_count
+                return True, max(0, remaining), reset_time
+            else:
+                # If update returned 0, the condition (request_count__lt=limit) failed.
+                # This means the limit was reached.
+                rate_limit.refresh_from_db()
+                return False, 0, reset_time
 
-                        if row:
-                            count = row[0]
-                            cursor.execute('COMMIT')
-                            remaining = limit - count
-                            return count <= limit, max(0, remaining), reset_time
-                        else:
-                            # Insert new record
-                            cursor.execute(
-                                """INSERT INTO core_ratelimit (user_id, request_date, request_count)
-                                   VALUES (%s, %s, 1)""",
-                                [user.id, today]
-                            )
-                            cursor.execute('COMMIT')
-                            remaining = limit - 1
-                            return True, max(0, remaining), reset_time
-
-                else:
-                    # PostgreSQL path
-                    from core.models import RateLimit
-
-                    rate_limit, created = RateLimit.objects.select_for_update().get_or_create(
-                        user=user,
-                        request_date=today,
-                        defaults={'request_count': 0}
-                    )
-
-                    if not created and rate_limit.request_count >= limit:
-                        return False, 0, reset_time
-
-                    rate_limit.request_count += 1
-                    rate_limit.save()
-
-                    remaining = limit - rate_limit.request_count
-                    return True, max(0, remaining), reset_time
+        except OperationalError:
+            # CRITICAL: Re-raise OperationalError so the @retry_on_db_lock
+            # decorator catches it and tries again.
+            raise
 
         except Exception as e:
-            logger.error(f"Rate limit check failed: {e}")
-            # Fail open
-            return True, 1, reset_time
+            # Catch other unexpected errors (e.g., programming errors)
+            logger.error(f"Rate limit check failed unexpectedly: {e}")
+            # Fail open (allow request) only for non-database-lock errors
+            return True, limit - 1, reset_time
 
-# class RateLimitMiddleware:
-#     """Tier-based rate limiting middleware"""
-#
-#     EXCLUDED_PATHS = [
-#         '/api/auth/',
-#         '/api/health',
-#         '/api/provider/',
-#     ]
-#
-#     RATE_LIMITS = {
-#         'free': 50,
-#         'pro': 5000,
-#         'enterprise': float('inf'),
-#     }
-#
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-#
-#     def __call__(self, request):
-#         path = request.path
-#
-#         # Skip excluded paths
-#         for excluded in self.EXCLUDED_PATHS:
-#             if path.startswith(excluded):
-#                 return self.get_response(request)
-#
-#         # Get a user via ninja_jwt
-#         user = self._get_user_from_request(request)
-#         if not user:
-#             return self.get_response(request)
-#
-#         # Get tier from profile
-#         try:
-#             tier = user.profile.tier
-#         except Exception:
-#             tier = 'free'
-#
-#         # Check limits
-#         is_allowed, remaining, reset_time = self._check_rate_limit(user, tier)
-#
-#         response = self.get_response(request)
-#
-#         # Add headings
-#         limit = self.RATE_LIMITS.get(tier, 50)
-#         response['X-RateLimit-Limit'] = str(limit) if tier != 'enterprise' else 'unlimited'
-#         response['X-RateLimit-Remaining'] = str(remaining) if tier != 'enterprise' else 'unlimited'
-#         response['X-RateLimit-Reset'] = str(int(reset_time.timestamp()))
-#
-#         if not is_allowed:
-#             return JsonResponse({
-#                 'error': 'Rate limit exceeded',
-#                 'tier': tier,
-#                 'limit': limit,
-#                 'retry_after': int((reset_time - timezone.now()).total_seconds()),
-#                 'upgrade_url': 'https://metrq.onrender.com/upgrade'
-#             }, status=429)
-#
-#         return response
-#
-#     def _get_user_from_request(self, request):
-#         """Get user from request"""
-#         from ninja_jwt.authentication import JWTAuth
-#
-#         try:
-#             # Using JWTAuth for authentication
-#             auth = JWTAuth()
-#             result = auth.authenticate(request)
-#             if result:
-#                 return result[0]  # Returns (user, token)
-#         except Exception as e:
-#             logger.debug(f"Auth error in rate limit: {e}")
-#
-#         return None
-#
-#     def _check_rate_limit(self, user, tier):
-#         """Check and update limits"""
-#         today = timezone.now().date()
-#         limit = self.RATE_LIMITS.get(tier, 50)
-#
-#         # Enterprise users without restrictions
-#         if tier == 'enterprise':
-#             return True, float('inf'), timezone.now() + timedelta(days=1)
-#
-#         # Cache key
-#         cache_key = f"rate_limit:{user.id}:{today}"
-#
-#         # Получить из кэша
-#         cached = cache.get(cache_key)
-#         if cached is not None:
-#             if cached >= limit:
-#                 # Calculate the reset time (the next UTC day at midnight)
-#                 reset_time = datetime.combine(
-#                     today + timedelta(days=1),
-#                     datetime.min.time(),
-#                     tzinfo=dt_timezone.utc
-#                 )
-#                 return False, 0, reset_time
-#
-#             # Increase counter by 1
-#             cache.incr(cache_key)
-#             remaining = limit - (cached + 1)
-#             reset_time = datetime.combine(
-#                 today + timedelta(days=1),
-#                 datetime.min.time(),
-#                 tzinfo=dt_timezone.utc
-#             )
-#             return True, remaining, reset_time
-#
-#         # BD fallback
-#         try:
-#             # from core.models import RateLimit
-#             rate_obj, created = RateLimit.objects.get_or_create(
-#                 user=user,
-#                 request_date=today,
-#                 defaults={'request_count': 1}
-#             )
-#
-#             if not created:
-#                 if rate_obj.request_count >= limit:
-#                     reset_time = datetime.combine(
-#                         today + timedelta(days=1),
-#                         datetime.min.time(),
-#                         tzinfo=dt_timezone.utc
-#                     )
-#                     return False, 0, reset_time
-#
-#                 # Atomic augmentation
-#                 from django.db.models import F
-#                 RateLimit.objects.filter(
-#                     user=user,
-#                     request_date=today
-#                 ).update(request_count=F('request_count') + 1)
-#                 rate_obj.refresh_from_db()
-#
-#             # Save in cache for 1 day
-#             cache.set(cache_key, rate_obj.request_count, timeout=86400)
-#
-#             remaining = limit - rate_obj.request_count
-#             reset_time = datetime.combine(
-#                 today + timedelta(days=1),
-#                 datetime.min.time(),
-#                 tzinfo=dt_timezone.utc
-#             )
-#             return True, remaining, reset_time
-#
-#         except Exception as e:
-#             logger.error(f"Rate limit DB error: {e}")
-#             return True, limit, timezone.now() + timedelta(days=1)
-
-# class RateLimitMiddleware:
-#     """Tier-based rate limiting middleware"""
-#
-#     EXCLUDED_PATHS = [
-#         '/api/auth/register',
-#         '/api/auth/login',
-#         '/api/auth/refresh',
-#         '/api/health',
-#         '/api/provider/',
-#     ]
-#
-#     RATE_LIMITS = {
-#         'free': 50,
-#         'pro': 5000,
-#         'enterprise': float('inf'),
-#     }
-#
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-#
-#     def __call__(self, request):
-#         # Skip rate limiting for excluded paths
-#         path = request.path
-#         for excluded in self.EXCLUDED_PATHS:
-#             if path.startswith(excluded):
-#                 return self.get_response(request)
-#
-#         # Only rate limit authenticated requests
-#         auth_header = request.headers.get('Authorization', '')
-#         if not auth_header.startswith('Bearer '):
-#             return self.get_response(request)
-#
-#         # Extract user from JWT (simplified - in production use ninja_jwt authentication)
-#         try:
-#             user = self._get_user_from_token(auth_header)
-#             if not user:
-#                 return self.get_response(request)
-#
-#             tier = getattr(user, 'profile', None)
-#             tier = tier.tier if tier else 'free'
-#
-#             # Check rate limit
-#             is_allowed, remaining, reset_time = self._check_rate_limit(user, tier)
-#
-#             response = self.get_response(request)
-#
-#             # Add rate limit headers
-#             limit = self.RATE_LIMITS.get(tier, 50)
-#             response['X-RateLimit-Limit'] = str(limit) if tier != 'enterprise' else 'unlimited'
-#             response['X-RateLimit-Remaining'] = str(remaining) if tier != 'enterprise' else 'unlimited'
-#             response['X-RateLimit-Reset'] = str(int(reset_time.timestamp()))
-#
-#             if not is_allowed:
-#                 return JsonResponse({
-#                     'error': 'Rate limit exceeded',
-#                     'tier': tier,
-#                     'limit': limit,
-#                     'retry_after': int((reset_time - datetime.utcnow()).total_seconds()),
-#                     'upgrade_url': 'https://metrq.onrender.com/upgrade'
-#                 }, status=429)
-#
-#             return response
-#
-#         except Exception as e:
-#             logger.error(f"Rate limiting error: {e}")
-#             return self.get_response(request)
-#
-#     def _get_user_from_token(self, auth_header):
-#         """Extract user from JWT token"""
-#         from ninja_jwt.tokens import AccessToken
-#         from django.contrib.auth import get_user_model
-#
-#         User = get_user_model()
-#         token = auth_header.split(' ')[1]
-#
-#         try:
-#             access_token = AccessToken(token)
-#             user_id = access_token.get('user_id')
-#             return User.objects.get(id=user_id)
-#         except Exception:
-#             return None
-#
-#     def _check_rate_limit(self, user, tier):
-#         """Check and update rate limit for user"""
-#         today = date.today()
-#         limit = self.RATE_LIMITS.get(tier, 50)
-#
-#         # Enterprise users have unlimited access
-#         if tier == 'enterprise':
-#             return True, float('inf'), datetime.utcnow() + timedelta(days=1)
-#
-#         # Use cache for high-performance rate limiting (fallback to DB)
-#         cache_key = f"rate_limit:{user.id}:{today}"
-#         cached_count = cache.get(cache_key)
-#
-#         if cached_count is not None:
-#             if cached_count >= limit:
-#                 reset_time = datetime.combine(today + timedelta(days=1), datetime.min.time())
-#                 return False, 0, reset_time
-#
-#             cache.incr(cache_key)
-#             remaining = limit - (cached_count + 1)
-#             reset_time = datetime.combine(today + timedelta(days=1), datetime.min.time())
-#             return True, remaining, reset_time
-#
-#         # Fallback to database
-#         try:
-#             rate_limit, created = RateLimit.objects.get_or_create(
-#                 user=user,
-#                 request_date=today,
-#                 defaults={'request_count': 0}
-#             )
-#
-#             if rate_limit.request_count >= limit:
-#                 reset_time = datetime.combine(today + timedelta(days=1), datetime.min.time())
-#                 return False, 0, reset_time
-#
-#             # Atomic increment using F() expression for concurrency safety
-#             from django.db.models import F
-#             RateLimit.objects.filter(
-#                 user=user,
-#                 request_date=today
-#             ).update(request_count=F('request_count') + 1)
-#
-#             # Refresh from DB
-#             rate_limit.refresh_from_db()
-#             remaining = limit - rate_limit.request_count
-#
-#             # Cache for 1 day
-#             cache.set(cache_key, rate_limit.request_count, timeout=86400)
-#
-#             reset_time = datetime.combine(today + timedelta(days=1), datetime.min.time())
-#             return True, remaining, reset_time
-#
-#         except Exception as e:
-#             logger.error(f"Database rate limit check failed: {e}")
-#             # Fail open in case of DB error (allow request)
-#             return True, limit, datetime.utcnow() + timedelta(days=1)  # Use django.utils.timezone.now().
+    # TODO: replace with redis driven method
+    # def _check_and_increment(self, user, tier, limit):
+    #     """
+    #     Использует Redis для rate limiting (идеально для production).
+    #     """
+    #     today = timezone.now().date()
+    #     reset_time = self._get_reset_time()
+    #
+    #     # Ключ для кэша
+    #     cache_key = f"rate_limit:{user.id}:{today}"
+    #
+    #     try:
+    #         # Атомарный инкремент в Redis
+    #         current = cache.incr(cache_key)
+    #
+    #         # Если ключа не было, incr вернёт 1, но нужно установить TTL
+    #         if current == 1:
+    #             # Устанавливаем время жизни до конца дня
+    #             seconds_until_midnight = (reset_time - timezone.now()).total_seconds()
+    #             cache.expire(cache_key, int(seconds_until_midnight))
+    #
+    #         if current > limit:
+    #             return False, 0, reset_time
+    #
+    #         remaining = limit - current
+    #         return True, max(0, remaining), reset_time
+    #
+    #     except ValueError:
+    #         # Ключ не существует, создаём
+    #         cache.set(cache_key, 1, timeout=86400)  # 24 часа
+    #         return True, limit - 1, reset_time
+    #     except Exception as e:
+    #         logger.error(f"Redis rate limit failed: {e}")
+    #         # Fallback на БД
+    #         return self._db_fallback_check(user, today, limit, reset_time)
+    #

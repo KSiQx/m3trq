@@ -1,4 +1,6 @@
 from ninja_jwt.tokens import RefreshToken
+from ninja_jwt.tokens import OutstandingToken, BlacklistedToken
+
 
 """Authentication business logic (token generation, custom checks)"""
 
@@ -24,3 +26,9 @@ def jwt_payload_handler(user):
         'user_id': str(user.id),
         'tier': tier,
     }
+
+def revoke_user_tokens(user):
+    """Revoke all refresh tokens for a user (useful for password change, downgrade, etc.)."""
+    outstanding_tokens = OutstandingToken.objects.filter(user=user)
+    for token in outstanding_tokens:
+        BlacklistedToken.objects.get_or_create(token=token)

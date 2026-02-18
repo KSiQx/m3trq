@@ -29,7 +29,7 @@
                     <span id="user-tier" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {{ tier }}
                     </span>
-                    <a href="/api/auth/logout" class="text-sm text-gray-500 hover:text-gray-900">Logout</a>
+                    <a href="#" id="logout-link" class="text-sm text-gray-500 hover:text-gray-900">Logout</a>
                 </div>
             </div>
         </div>
@@ -112,25 +112,17 @@
         </section>
     </main>
 
+    <!-- Load dashboard utilities -->
+    <script src="/static/js/dashboard.js"></script>
+
     <script>
-        // Configuration
+        // Dashboard-specific initialization
         const API_BASE = '/api';
-        let authToken = localStorage.getItem('metrq_token');
 
-        if (!authToken) {
-            window.location.href = '/login';
-        }
-
-        // Headers for all requests
-        const headers = {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-        };
-
-        // Load dashboard data
+        // Load dashboard data using fetchWithAuth
         async function loadDashboard() {
             try {
-                const response = await fetch(`${API_BASE}/dashboard/`, { headers });
+                const response = await fetchWithAuth(`${API_BASE}/dashboard/`);
                 if (!response.ok) throw new Error('Failed to load dashboard');
 
                 const data = await response.json();
@@ -159,8 +151,9 @@
 
             } catch (error) {
                 console.error('Dashboard load error:', error);
-                if (error.message.includes('401')) {
-                    window.location.href = '/login';
+                if (error.message.includes('401') || error.message.includes('Session expired')) {
+                    // Already handled by fetchWithAuth
+                    return;
                 }
             }
         }
@@ -216,10 +209,9 @@
             }).join('');
         }
 
-        // Rate limit status
         async function updateRateLimitStatus() {
             try {
-                const response = await fetch(`${API_BASE}/dashboard/limits`, { headers });
+                const response = await fetchWithAuth(`${API_BASE}/dashboard/limits`);
                 const data = await response.json();
 
                 const display = document.getElementById('rate-limit-display');
@@ -233,7 +225,7 @@
             }
         }
 
-        // Report generation
+        // Report generation using fetchWithAuth
         async function requestReport() {
             const type = document.getElementById('report-type').value;
             const format = document.getElementById('report-format').value;
@@ -242,9 +234,8 @@
             statusDiv.classList.remove('hidden');
 
             try {
-                const response = await fetch(`${API_BASE}/reports/request`, {
+                const response = await fetchWithAuth(`${API_BASE}/reports/request`, {
                     method: 'POST',
-                    headers,
                     body: JSON.stringify({ type, format })
                 });
 
@@ -265,14 +256,12 @@
         function pollReportStatus(jobId) {
             const interval = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/reports/status/${jobId}`, { headers });
+                    const response = await fetchWithAuth(`${API_BASE}/reports/status/${jobId}`);
                     const data = await response.json();
 
-                    // Update progress
                     document.getElementById('progress-bar').style.width = `${data.progress}%`;
                     document.getElementById('progress-text').textContent = `${data.progress}%`;
 
-                    // Update status message
                     const messages = {
                         'queued': 'Waiting in queue...',
                         'processing': 'Generating your report...',
@@ -283,7 +272,6 @@
 
                     if (data.status === 'done') {
                         clearInterval(interval);
-                        // Show download link
                         const downloadBtn = document.createElement('a');
                         downloadBtn.href = data.download_url;
                         downloadBtn.className = 'mt-2 inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium';
@@ -294,17 +282,15 @@
                         clearInterval(interval);
                         document.getElementById('status-message').textContent = `Error: ${data.error}`;
                     }
-
                 } catch (e) {
                     console.error('Status check failed:', e);
                 }
             }, 2000);
         }
 
-        // Load report history
         async function loadReportHistory() {
             try {
-                const response = await fetch(`${API_BASE}/reports/history`, { headers });
+                const response = await fetchWithAuth(`${API_BASE}/reports/history`);
                 const reports = await response.json();
 
                 const container = document.getElementById('report-history');
@@ -333,14 +319,38 @@
             }
         }
 
-        // Initialize
+
+        // Initialize dashboard on load
         document.addEventListener('DOMContentLoaded', () => {
             loadDashboard();
             loadReportHistory();
-
-            // Refresh dashboard every 60 seconds
-            setInterval(loadDashboard, 60000);
+            setInterval(loadDashboard, 1800000); // Refresh every 30 min
         });
+
+
+<!--        // Variant 2: Initialize dashboard on load-->
+<!--        document.addEventListener('DOMContentLoaded', () => {-->
+<!--            loadDashboard();-->
+<!--            loadReportHistory();-->
+<!--        // Determine the interval based on the user's tier-->
+<!--        function getRefreshInterval(tier) {-->
+<!--            switch(tier) {-->
+<!--                case 'enterprise': return 60000;  // 1 min-->
+<!--                case 'pro': return 300000;        // 5 min-->
+<!--                case 'free':-->
+<!--                default: return 1800000;          // 30 min-->
+<!--            }-->
+<!--        }-->
+<!--        // Get tier from localStorage (saved during login)-->
+<!--        const userTier = localStorage.getItem('user_tier') || 'free';-->
+<!--        const refreshInterval = getRefreshInterval(userTier);-->
+<!--        // Logging for debugging (can be deleted later)-->
+<!--        console.log(`Dashboard refresh interval: ${refreshInterval/1000} seconds (${userTier} tier)`);-->
+<!--        // Using adaptive interval-->
+<!--          setInterval(loadDashboard, refreshInterval);-->
+<!--        });-->
+
+
     </script>
 </body>
 </html>

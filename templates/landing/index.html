@@ -589,13 +589,20 @@
 
     <!-- JavaScript -->
     <script>
-        // Temporary registration notice (Phase 2 Task 7 will implement actual registration)
         function showRegistrationNotice(tier) {
-            alert(`🚧 Registration for ${tier} tier will be available in Phase 2 Task 7`);
-            // Store selected tier for future implementation
-            localStorage.setItem('selected_tier', tier);
-            console.log(`User selected tier: ${tier}`);
+            if (tier === 'enterprise') {
+                window.location.href = '/enterprise-info/';
+            } else {
+                window.location.href = `/register?plan=${tier}`;
+            }
         }
+//        // Temporary registration notice (Phase 2 Task 7 will implement actual registration)
+//        function showRegistrationNotice(tier) {
+//            alert(`🚧 Registration for ${tier} tier will be available in Phase 2 Task 7`);
+//           // Store selected tier for future implementation
+//            localStorage.setItem('selected_tier', tier);
+//            console.log(`User selected tier: ${tier}`);
+//        }
 
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', function() {

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | MetrQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* LED green glow effects */
+        .led-glow {
+            box-shadow: 0 0 10px #39FF14, 0 0 20px rgba(57, 255, 20, 0.5);
+        }
+        .led-glow-hover:hover {
+            box-shadow: 0 0 15px #7CFC00, 0 0 30px rgba(124, 252, 0, 0.6);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+        .led-glow-sm {
+            box-shadow: 0 0 5px #39FF14, 0 0 10px rgba(57, 255, 20, 0.3);
+        }
+        .led-glow-sm-hover:hover {
+            box-shadow: 0 0 8px #7CFC00, 0 0 15px rgba(124, 252, 0, 0.4);
+        }
+
+        /* Grid overlay */
+        .grid-overlay {
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        /* Vignette effect */
+        .vignette {
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Animated gradient background */
+        .animated-bg {
+            background: linear-gradient(135deg, #111111 0%, #1A1A1A 50%, #0D1F0D 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Pulse animation */
+        @keyframes ledPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .led-pulse {
+            animation: ledPulse 2s ease-in-out infinite;
+        }
+
+        /* Password strength indicator */
+        .strength-weak { background-color: #ef4444; }
+        .strength-fair { background-color: #f59e0b; }
+        .strength-good { background-color: #3b82f6; }
+        .strength-strong { background-color: #39FF14; }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #39FF14;
+        }
+    </style>
+</head>
+<body class="h-full bg-[#111111] text-white animated-bg relative">
+    <!-- Grid overlay -->
+    <div class="fixed inset-0 grid-overlay z-0"></div>
+
+    <!-- Vignette overlay -->
+    <div class="fixed inset-0 vignette z-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#111111]/90 border-b border-[#333333]/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                        <span class="text-black font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">MetrQ</span>
+                </a>
+                <a href="/login/" class="text-gray-300 hover:text-[#39FF14] transition-colors text-sm font-medium">
+                    Already have an account? Sign in
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-screen">
+        <div class="max-w-md w-full space-y-8">
+            <!-- Registration Card -->
+            <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 relative">
+                <!-- Plan Badge -->
+                <div id="plan-badge" class="absolute -top-3 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider hidden">
+                    <span id="plan-text"></span>
+                </div>
+
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-white mb-2">Create Account</h2>
+                    <p class="text-gray-400 text-sm">Join MetrQ News Analytics</p>
+                </div>
+
+                <form id="register-form" class="space-y-6">
+                    <!-- Nickname Field -->
+                    <div>
+                        <label for="nickname" class="block text-sm font-medium text-gray-300 mb-2">
+                            Nickname <span class="text-[#39FF14]">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="nickname"
+                            name="nickname"
+                            required
+                            class="w-full px-4 py-3 bg-[#2A2A2A] border border-[#444444] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14] transition-colors"
+                            placeholder="Enter your nickname (3-50 characters)"
+                        >
+                        <p id="nickname-error" class="mt-2 text-sm text-red-400 hidden"></p>
+                        <p class="mt-1 text-xs text-gray-500">Letters, numbers, dots, underscores, hyphens only</p>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
+                            Password <span class="text-[#39FF14]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                required
+                                class="w-full px-4 py-3 bg-[#2A2A2A] border border-[#444444] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14] transition-colors pr-10"
+                                placeholder="Min 12 chars, mixed case, number, special"
+                            >
+                            <button type="button" id="toggle-password" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#39FF14] transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Password Strength Indicator -->
+                        <div class="mt-2">
+                            <div class="flex gap-1 h-1">
+                                <div id="strength-1" class="flex-1 bg-[#333333] rounded transition-colors duration-300"></div>
+                                <div id="strength-2" class="flex-1 bg-[#333333] rounded transition-colors duration-300"></div>
+                                <div id="strength-3" class="flex-1 bg-[#333333] rounded transition-colors duration-300"></div>
+                                <div id="strength-4" class="flex-1 bg-[#333333] rounded transition-colors duration-300"></div>
+                            </div>
+                            <p id="password-strength-text" class="mt-1 text-xs text-gray-500"></p>
+                        </div>
+
+                        <p id="password-error" class="mt-2 text-sm text-red-400 hidden"></p>
+                    </div>
+
+                    <!-- Confirm Password Field -->
+                    <div>
+                        <label for="confirm-password" class="block text-sm font-medium text-gray-300 mb-2">
+                            Confirm Password <span class="text-[#39FF14]">*</span>
+                        </label>
+                        <div class="relative">
+                            <input
+                                type="password"
+                                id="confirm-password"
+                                name="confirm-password"
+                                required
+                                class="w-full px-4 py-3 bg-[#2A2A2A] border border-[#444444] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14] transition-colors pr-10"
+                                placeholder="Confirm your password"
+                            >
+                            <button type="button" id="toggle-confirm-password" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-[#39FF14] transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="confirm-password-error" class="mt-2 text-sm text-red-400 hidden"></p>
+                    </div>
+
+                    <!-- Terms Checkbox -->
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input
+                                id="terms"
+                                name="terms"
+                                type="checkbox"
+                                required
+                                class="w-4 h-4 border border-[#444444] rounded bg-[#2A2A2A] text-[#39FF14] focus:ring-[#39FF14] focus:ring-offset-0"
+                            >
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms" class="text-gray-300">
+                                I agree to the <a href="/terms/" target="_blank" class="text-[#39FF14] hover:text-[#7CFC00] underline">Terms of Use</a> <span class="text-[#39FF14]">*</span>
+                            </label>
+                            <p id="terms-error" class="mt-1 text-sm text-red-400 hidden"></p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button
+                        type="submit"
+                        id="submit-btn"
+                        disabled
+                        class="w-full py-3 px-4 bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black font-bold rounded-lg text-lg opacity-50 cursor-not-allowed transition-all duration-300 led-glow-hover"
+                    >
+                        Create Account
+                    </button>
+
+                    <!-- Error Message -->
+                    <div id="error-message" class="hidden bg-red-900/30 border border-red-500/50 rounded-lg p-4 text-center">
+                        <p class="text-red-400 text-sm"></p>
+                    </div>
+                </form>
+
+                <!-- Login Link -->
+                <div class="mt-6 text-center">
+                    <p class="text-gray-400 text-sm">
+                        Already have an account?
+                        <a href="/login/" class="text-[#39FF14] hover:text-[#7CFC00] font-medium transition-colors">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Get plan from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const plan = urlParams.get('plan') || 'free';
+
+        // Display plan badge
+        const planBadge = document.getElementById('plan-badge');
+        const planText = document.getElementById('plan-text');
+
+        if (plan === 'pro') {
+            planBadge.classList.remove('hidden');
+            planBadge.classList.add('bg-gradient-to-r', 'from-[#39FF14]', 'to-[#00FF41]', 'text-black');
+            planText.textContent = 'Pro Plan';
+        } else if (plan === 'free') {
+            planBadge.classList.remove('hidden');
+            planBadge.classList.add('bg-[#333333]', 'text-[#39FF14]', 'border', 'border-[#39FF14]');
+            planText.textContent = 'Free Plan';
+        }
+
+        // Form elements
+        const form = document.getElementById('register-form');
+        const nicknameInput = document.getElementById('nickname');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const termsInput = document.getElementById('terms');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Validation state
+        const validation = {
+            nickname: false,
+            password: false,
+            confirmPassword: false,
+            terms: false
+        };
+
+        // Reserved words
+        const reservedWords = ['admin', 'support', 'root', 'info', 'system', 'test'];
+        const commonPasswords = ['password123', 'password', '12345678', 'qwerty123', 'letmein123', 'welcome123', 'admin123', 'user123'];
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId, buttonId) {
+            const input = document.getElementById(inputId);
+            const button = document.getElementById(buttonId);
+
+            button.addEventListener('click', () => {
+                const type = input.type === 'password' ? 'text' : 'password';
+                input.type = type;
+
+                // Update icon
+                button.innerHTML = type === 'password'
+                    ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>`
+                    : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>`;
+            });
+        }
+
+        togglePasswordVisibility('password', 'toggle-password');
+        togglePasswordVisibility('confirm-password', 'toggle-confirm-password');
+
+        // Validate nickname
+        function validateNickname() {
+            const value = nicknameInput.value.trim();
+            const errorEl = document.getElementById('nickname-error');
+            const lowerValue = value.toLowerCase();
+
+            // Check length
+            if (value.length < 3 || value.length > 50) {
+                showError(errorEl, 'Nickname must be between 3 and 50 characters');
+                validation.nickname = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Check allowed characters
+            if (!/^[a-zA-Z0-9.@_-]+$/.test(value)) {
+                showError(errorEl, 'Only letters, numbers, dots, @, underscores, and hyphens allowed');
+                validation.nickname = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Check reserved words
+            for (const word of reservedWords) {
+                if (lowerValue.includes(word)) {
+                    showError(errorEl, `Nickname cannot contain reserved word: ${word}`);
+                    validation.nickname = false;
+                    updateSubmitButton();
+                    return;
+                }
+            }
+
+            hideError(errorEl);
+            validation.nickname = true;
+            updateSubmitButton();
+        }
+
+        // Calculate password strength
+        function calculatePasswordStrength(password) {
+            let strength = 0;
+
+            if (password.length >= 12) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(password)) strength++;
+
+            return strength;
+        }
+
+        // Update password strength indicator
+        function updatePasswordStrength(password) {
+            const strength = calculatePasswordStrength(password);
+            const bars = [
+                document.getElementById('strength-1'),
+                document.getElementById('strength-2'),
+                document.getElementById('strength-3'),
+                document.getElementById('strength-4')
+            ];
+            const textEl = document.getElementById('password-strength-text');
+
+            // Reset all bars
+            bars.forEach(bar => {
+                bar.className = 'flex-1 bg-[#333333] rounded transition-colors duration-300';
+            });
+
+            // Color bars based on strength
+            const colors = ['strength-weak', 'strength-fair', 'strength-good', 'strength-strong'];
+            const texts = ['Weak', 'Fair', 'Good', 'Strong'];
+
+            for (let i = 0; i < strength && i < 4; i++) {
+                bars[i].classList.add(colors[Math.min(strength - 1, 3)]);
+            }
+
+            if (password.length > 0) {
+                textEl.textContent = texts[Math.min(strength - 1, 3)] || 'Too short';
+                textEl.className = `mt-1 text-xs ${strength >= 4 ? 'text-[#39FF14]' : strength >= 3 ? 'text-blue-400' : strength >= 2 ? 'text-yellow-400' : 'text-red-400'}`;
+            } else {
+                textEl.textContent = '';
+            }
+
+            return strength >= 4;
+        }
+
+        // Validate password
+        function validatePassword() {
+            const value = passwordInput.value;
+            const errorEl = document.getElementById('password-error');
+            const nickname = nicknameInput.value.toLowerCase();
+
+            // Check length
+            if (value.length < 12) {
+                showError(errorEl, 'Password must be at least 12 characters');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Check complexity
+            if (!/[A-Z]/.test(value)) {
+                showError(errorEl, 'Must contain at least one uppercase letter');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+            if (!/[a-z]/.test(value)) {
+                showError(errorEl, 'Must contain at least one lowercase letter');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+            if (!/\d/.test(value)) {
+                showError(errorEl, 'Must contain at least one digit');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+            if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value)) {
+                showError(errorEl, 'Must contain at least one special character');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Check common passwords
+            if (commonPasswords.includes(value.toLowerCase())) {
+                showError(errorEl, 'Password is too common, choose a more unique one');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+
+            // Check nickname not in password
+            if (nickname && value.toLowerCase().includes(nickname)) {
+                showError(errorEl, 'Password cannot contain your nickname');
+                validation.password = false;
+                updateSubmitButton();
+                return;
+            }
+
+            hideError(errorEl);
+            validation.password = updatePasswordStrength(value);
+            updateSubmitButton();
+        }
+
+        // Validate confirm password
+        function validateConfirmPassword() {
+            const value = confirmPasswordInput.value;
+            const errorEl = document.getElementById('confirm-password-error');
+
+            if (value !== passwordInput.value) {
+                showError(errorEl, 'Passwords do not match');
+                validation.confirmPassword = false;
+                updateSubmitButton();
+                return;
+            }
+
+            if (value === '') {
+                validation.confirmPassword = false;
+                updateSubmitButton();
+                return;
+            }
+
+            hideError(errorEl);
+            validation.confirmPassword = true;
+            updateSubmitButton();
+        }
+
+        // Validate terms
+        function validateTerms() {
+            validation.terms = termsInput.checked;
+            const errorEl = document.getElementById('terms-error');
+
+            if (!validation.terms) {
+                showError(errorEl, 'You must agree to the Terms of Use');
+            } else {
+                hideError(errorEl);
+            }
+
+            updateSubmitButton();
+        }
+
+        // Show/hide error helpers
+        function showError(element, message) {
+            element.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function hideError(element) {
+            element.classList.add('hidden');
+        }
+
+        // Update submit button state
+        function updateSubmitButton() {
+            const isValid = validation.nickname && validation.password && validation.confirmPassword && validation.terms;
+
+            if (isValid) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                submitBtn.classList.add('led-glow');
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                submitBtn.classList.remove('led-glow');
+            }
+        }
+
+        // Event listeners
+        nicknameInput.addEventListener('input', validateNickname);
+        nicknameInput.addEventListener('blur', validateNickname);
+
+        passwordInput.addEventListener('input', () => {
+            validatePassword();
+            if (confirmPasswordInput.value) validateConfirmPassword();
+        });
+        passwordInput.addEventListener('blur', validatePassword);
+
+        confirmPasswordInput.addEventListener('input', validateConfirmPassword);
+        confirmPasswordInput.addEventListener('blur', validateConfirmPassword);
+
+        termsInput.addEventListener('change', validateTerms);
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const nickname = nicknameInput.value.trim();
+            const password = passwordInput.value;
+            const errorDiv = document.getElementById('error-message');
+            const errorText = errorDiv.querySelector('p');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nickname,
+                        password,
+                        plan: plan
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                // Save token
+                localStorage.setItem('metrq_token', data.token);
+                document.cookie = `token=${data.token}; path=/; max-age=86400`;
+
+                // Handle payment requirement
+                if (data.requires_payment) {
+                    window.location.href = '/payment-info/';
+                } else {
+                    window.location.href = '/dashboard/';
+                }
+
+            } catch (error) {
+                errorText.textContent = error.message;
+                errorDiv.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+</html>

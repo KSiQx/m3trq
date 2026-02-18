@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Use | MetrQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .led-glow-sm-hover:hover {
+            box-shadow: 0 0 8px #7CFC00, 0 0 15px rgba(124, 252, 0, 0.4);
+        }
+
+        .grid-overlay {
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .vignette {
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+        }
+
+        .animated-bg {
+            background: linear-gradient(135deg, #111111 0%, #1A1A1A 50%, #0D1F0D 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111111;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #39FF14;
+        }
+    </style>
+</head>
+<body class="h-full bg-[#111111] text-white animated-bg relative">
+    <div class="fixed inset-0 grid-overlay z-0"></div>
+    <div class="fixed inset-0 vignette z-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#111111]/90 border-b border-[#333333]/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                        <span class="text-black font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">MetrQ</span>
+                </a>
+                <a href="/register/" class="text-gray-300 hover:text-[#39FF14] transition-colors text-sm font-medium">
+                    ← Back to Registration
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mx-auto">
+            <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 md:p-12">
+                <h1 class="text-3xl md:text-4xl font-bold text-white mb-6">Terms of Use</h1>
+                <div class="w-24 h-1 bg-gradient-to-r from-[#39FF14] to-[#00FF41] rounded-full mb-8"></div>
+
+                <div class="space-y-6 text-gray-300 leading-relaxed">
+                    <p class="text-sm text-gray-500 uppercase tracking-wider font-semibold">Last updated: February 2025</p>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">1. Acceptance of Terms</h2>
+                        <p>By accessing and using MetrQ News Analytics ("the Service"), you accept and agree to be bound by these Terms of Use. If you do not agree to these terms, please do not use the Service.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">2. Description of Service</h2>
+                        <p>MetrQ provides news analytics, sentiment analysis, and reporting tools. The Service includes access to aggregated news data, analytical reports, and related features based on your selected subscription tier.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">3. User Accounts</h2>
+                        <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-400">
+                            <li>Provide accurate and complete information during registration</li>
+                            <li>Notify us immediately of any unauthorized use of your account</li>
+                            <li>Not share your account credentials with third parties</li>
+                            <li>Not create multiple accounts to circumvent usage limits</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">4. Subscription Tiers</h2>
+                        <p>The Service offers Free, Pro, and Enterprise tiers. Features and limitations vary by tier as described on our pricing page. Enterprise accounts are subject to separate contractual agreements.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">5. Acceptable Use</h2>
+                        <p>You agree not to use the Service for any unlawful purpose or to:</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1 text-gray-400">
+                            <li>Scrape or harvest data in violation of our rate limits</li>
+                            <li>Attempt to gain unauthorized access to our systems</li>
+                            <li>Use the Service to distribute malware or spam</li>
+                            <li>Interfere with other users' access to the Service</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">6. Privacy</h2>
+                        <p>Your use of the Service is also governed by our Privacy Policy. We collect minimal data and prioritize your anonymity as described in our privacy documentation.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">7. Limitation of Liability</h2>
+                        <p>The Service is provided "as is" without warranties of any kind. We are not liable for any damages arising from your use of the Service or reliance on analytical data provided.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">8. Changes to Terms</h2>
+                        <p>We reserve the right to modify these terms at any time. Continued use of the Service after changes constitutes acceptance of the modified terms.</p>
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-semibold text-white mb-3">9. Contact</h2>
+                        <p>For questions about these Terms, contact us at <a href="mailto:legal@metrq.com" class="text-[#39FF14] hover:text-[#7CFC00]">legal@metrq.com</a>.</p>
+                    </section>
+                </div>
+
+                <div class="mt-10 pt-8 border-t border-[#333333]">
+                    <a href="/register/" class="inline-flex items-center px-6 py-3 border border-[#39FF14] text-[#39FF14] rounded-lg hover:bg-[#39FF14] hover:text-black transition-all duration-300 font-medium led-glow-sm-hover">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Registration
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

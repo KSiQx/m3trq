@@ -6,6 +6,39 @@ from django.dispatch import receiver
 from django.conf import settings
 
 
+class Organization(models.Model):
+    """Enterprise organization for automatic tier assignment"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    enterprise_tag = models.CharField(max_length=100, unique=True, db_index=True)
+    max_licenses = models.PositiveIntegerField(default=10)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['enterprise_tag', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.enterprise_tag})"
+
+    @property
+    def used_licenses(self):
+        """Count active profiles associated with this organization"""
+        return self.profiles.filter(user__is_active=True).count()  # type: ignore
+
+    @property
+    def available_licenses(self):
+        """Calculate remaining licenses"""
+        return max(0, self.max_licenses - self.used_licenses)
+
+    def has_available_license(self):
+        """Check if organization can accept new users"""
+        return self.is_active and self.available_licenses > 0
+
+
 class Profile(models.Model):
     TIER_CHOICES = [
         ('free', 'Free'),
@@ -27,6 +60,13 @@ class Profile(models.Model):
     )
     max_reports = models.PositiveSmallIntegerField(default=1)
     reports_used = models.PositiveSmallIntegerField(default=0, db_index=True)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='profiles'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -34,6 +74,7 @@ class Profile(models.Model):
         indexes = [
             models.Index(fields=['tier']),
             models.Index(fields=['reports_used']),
+            models.Index(fields=['organization', 'tier']),
         ]
 
     def __str__(self):
@@ -56,5 +97,3 @@ class Profile(models.Model):
         if self.tier == 'enterprise':
             return True
         return self.reports_used < self.max_reports
-
-    

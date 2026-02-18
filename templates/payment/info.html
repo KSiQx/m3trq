@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment | MetrQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .led-glow {
+            box-shadow: 0 0 10px #39FF14, 0 0 20px rgba(57, 255, 20, 0.5);
+        }
+        .led-glow-hover:hover {
+            box-shadow: 0 0 15px #7CFC00, 0 0 30px rgba(124, 252, 0, 0.6);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .grid-overlay {
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .vignette {
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+        }
+
+        .animated-bg {
+            background: linear-gradient(135deg, #111111 0%, #1A1A1A 50%, #0D1F0D 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes ledPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .led-pulse {
+            animation: ledPulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="h-full bg-[#111111] text-white animated-bg relative">
+    <div class="fixed inset-0 grid-overlay z-0"></div>
+    <div class="fixed inset-0 vignette z-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#111111]/90 border-b border-[#333333]/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                        <span class="text-black font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">MetrQ</span>
+                </a>
+                <a href="/dashboard/" class="text-[#39FF14] hover:text-[#7CFC00] transition-colors text-sm font-medium">
+                    Go to Dashboard →
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-screen">
+        <div class="max-w-lg w-full">
+            <div class="bg-[#1E1E1E] border border-[#333333] rounded-2xl p-8 md:p-12 text-center">
+                <!-- Icon -->
+                <div class="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6 led-pulse">
+                    <svg class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+
+                <h1 class="text-2xl md:text-3xl font-bold text-white mb-4">Payment Temporarily Unavailable</h1>
+
+                <div class="w-20 h-1 bg-gradient-to-r from-[#39FF14] to-[#00FF41] rounded-full mx-auto mb-6"></div>
+
+                <p class="text-gray-400 mb-4">
+                    You have been successfully registered as a <span class="text-[#39FF14] font-semibold">Free</span> user.
+                </p>
+
+                <p class="text-gray-400 mb-8">
+                    Payment processing is currently under maintenance. We will soon add the ability to upgrade to Pro.
+                    In the meantime, you can explore all Free tier features.
+                </p>
+
+                <div class="bg-[#2A2A2A] rounded-xl p-6 mb-8 border border-[#444444]">
+                    <h3 class="text-white font-semibold mb-3">Your Current Status</h3>
+                    <ul class="space-y-2 text-sm text-gray-400 text-left">
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-[#39FF14] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Free tier activated
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-[#39FF14] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            1 report per month
+                        </li>
+                        <li class="flex items-center">
+                            <svg class="w-5 h-5 text-[#39FF14] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-lineround" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Basic analytics access
+                        </li>
+                    </ul>
+                </div>
+
+                <a href="/dashboard/" class="inline-flex items-center justify-center w-full px-8 py-4 bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black font-bold rounded-lg hover:opacity-90 transition-all duration-300 led-glow-hover">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                    </svg>
+                    Go to Dashboard
+                </a>
+
+                <p class="mt-6 text-sm text-gray-500">
+                    Questions? Contact <a href="mailto:support@metrq.com" class="text-[#39FF14] hover:text-[#7CFC00]">support@metrq.com</a>
+                </p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

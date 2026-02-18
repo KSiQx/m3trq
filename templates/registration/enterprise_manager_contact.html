@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Solutions | MetrQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .led-glow {
+            box-shadow: 0 0 10px #39FF14, 0 0 20px rgba(57, 255, 20, 0.5);
+        }
+        .led-glow-hover:hover {
+            box-shadow: 0 0 15px #7CFC00, 0 0 30px rgba(124, 252, 0, 0.6);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .grid-overlay {
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+
+        .vignette {
+            box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.8);
+        }
+
+        .animated-bg {
+            background: linear-gradient(135deg, #111111 0%, #1A1A1A 50%, #0D1F0D 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes ledPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .led-pulse {
+            animation: ledPulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="h-full bg-[#111111] text-white animated-bg relative">
+    <div class="fixed inset-0 grid-overlay z-0"></div>
+    <div class="fixed inset-0 vignette z-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#111111]/90 border-b border-[#333333]/50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded bg-gradient-to-br from-[#39FF14] to-[#00FF41] flex items-center justify-center">
+                        <span class="text-black font-bold text-lg">M</span>
+                    </div>
+                    <span class="text-xl font-bold text-white">MetrQ</span>
+                </a>
+                <a href="/" class="text-gray-300 hover:text-[#39FF14] transition-colors text-sm font-medium">
+                    ← Back to Home
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-screen">
+        <div class="max-w-2xl w-full">
+            <div class="bg-[#1E1E1E] border-2 border-[#39FF14] rounded-2xl p-8 md:p-12 relative led-glow">
+                <!-- Enterprise Badge -->
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span class="bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider">
+                        Enterprise
+                    </span>
+                </div>
+
+                <div class="text-center mt-4">
+                    <div class="w-20 h-20 bg-[#39FF14]/10 rounded-full flex items-center justify-center mx-auto mb-6 led-pulse">
+                        <svg class="w-10 h-10 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                    </div>
+
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">Enterprise Solutions</h1>
+                    <div class="w-24 h-1 bg-gradient-to-r from-[#39FF14] to-[#00FF41] rounded-full mx-auto mb-6"></div>
+
+                    <p class="text-gray-400 text-lg mb-8">
+                        Custom analytics solutions for organizations requiring dedicated infrastructure,
+                        unlimited reporting, and enterprise-grade support.
+                    </p>
+                </div>
+
+                <div class="space-y-6 mb-10">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-[#39FF14]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                            <svg class="w-4 h-4 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold mb-1">Unlimited Reports</h3>
+                            <p class="text-gray-400 text-sm">No limits on report generation across your entire organization</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-[#39FF14]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                            <svg class="w-4 h-4 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold mb-1">Custom Integrations</h3>
+                            <p class="text-gray-400 text-sm">API access and custom data pipelines tailored to your needs</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-[#39FF14]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                            <svg class="w-4 h-4 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold mb-1">SLA Guarantee</h3>
+                            <p class="text-gray-400 text-sm">99.9% uptime guarantee with dedicated support channel</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-[#39FF14]/10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+                            <svg class="w-4 h-4 text-[#39FF14]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold mb-1">Automatic Provisioning</h3>
+                            <p class="text-gray-400 text-sm">Employees with your company domain get instant access</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-[#2A2A2A] rounded-xl p-6 mb-8 border border-[#444444]">
+                    <h3 class="text-lg font-semibold text-white mb-3">Contact Sales</h3>
+                    <p class="text-gray-400 text-sm mb-4">
+                        Enterprise accounts are created manually after contract negotiation.
+                        Reach out to our sales team to discuss your requirements.
+                    </p>
+                    <a href="mailto:sales@metrq.com" class="inline-flex items-center text-[#39FF14] hover:text-[#7CFC00] font-medium transition-colors">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        sales@metrq.com
+                    </a>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="/" class="px-8 py-3 border border-[#333333] text-white rounded-lg hover:border-[#39FF14] hover:text-[#39FF14] transition-all duration-300 font-medium text-center">
+                        Return Home
+                    </a>
+                    <a href="/register?plan=free" class="px-8 py-3 bg-gradient-to-r from-[#39FF14] to-[#00FF41] text-black font-bold rounded-lg hover:opacity-90 transition-all duration-300 text-center led-glow-hover">
+                        Try Free Tier
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

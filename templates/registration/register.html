@@ -560,11 +560,14 @@
 
                 // Save token
                 localStorage.setItem('metrq_token', data.token);
+                if (data.tier) {
+                    localStorage.setItem('user_tier', data.tier);
+                }
                 document.cookie = `token=${data.token}; path=/; max-age=86400`;
 
                 // Handle payment requirement
                 if (data.requires_payment) {
-                    window.location.href = '/payment-info/';
+                    window.location.href = '/pricing';
                 } else {
                     window.location.href = '/dashboard/';
                 }

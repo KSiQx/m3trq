@@ -7,6 +7,7 @@ from collections import defaultdict, Counter
 
 from django.db.models import Avg, Count, Q
 from django.db import transaction, connection, models
+from django.http import HttpResponse
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -96,13 +97,16 @@ class MetricsSchema(Schema):
 class DashboardResponse(Schema):
     """
     Schema for the dashboard API response.
-    Combines user tier information, aggregated metrics, and recent articles
-    grouped by language.
+    Combines user tier information, aggregated metrics,recent articles grouped by language,
+    and rate limit data.
     """
 
     tier: str
     metrics: MetricsSchema
     recent_articles: Dict[str, List[ArticleSchema]]
+    rate_limit_used: int
+    rate_limit_remaining: int
+    rate_limit_limit: int
 
 
 class ArticleListResponse(Schema):
@@ -154,104 +158,11 @@ class BiasExplanationSchema(Schema):
 
 
 # ============================================================================
-# RATE LIMITING
-# ============================================================================
-
-# class RateLimitMiddleware:
-#     """Handles tier-based rate limiting with atomic updates."""
-#
-#     LIMITS = settings.RATE_LIMITS  # USE RATE_LIMITS from settings.py
-#     # LIMITS = {
-#     #     'free': 50,
-#     #     'pro': 5000,
-#     #     'enterprise': float('inf')
-#     # }
-#
-#     @staticmethod
-#     def check_and_increment(user: User) -> tuple[bool, int, int, datetime]:
-#         """
-#         Atomic rate limit check using UPSERT pattern.
-#         Returns: (allowed, limit, remaining, reset_time)
-#         """
-#         tier = getattr(user.profile, 'tier', 'free')
-#         limit = RateLimitMiddleware.LIMITS.get(tier, 50)
-#         # Get current time in UTC (aware datetime)
-#         now = timezone.now()  # Returns UTC aware datetime because USE_TZ=True and TIME_ZONE='UTC'
-#         today = now.date()  # This is a naive date object (dates don't have timezones)
-#         # Create reset time as UTC aware datetime
-#         # Midnight UTC of next day (when rate limits reset)
-#         reset_time = timezone.make_aware(
-#             datetime.combine(today + timedelta(days=1), datetime.min.time()),
-#             timezone=timezone.utc
-#         )  # USE_TZ = True
-#         # reset_time = datetime.combine(today + timedelta(days=1), datetime.min.time())
-#         # reset_time = reset_time.replace(tzinfo=timezone.utc)
-#
-#         if tier == 'enterprise':
-#             return True, -1, -1, reset_time
-#
-#         try:
-#             with transaction.atomic():
-#                 # Use get_or_create with select_for_update for atomicity
-#                 # In SQLite: BEGIN IMMEDIATE ensures exclusive lock
-#                 if connection.vendor == 'sqlite':
-#                     with connection.cursor() as cursor:
-#                         cursor.execute('BEGIN IMMEDIATE')
-#                         # Try to update existing
-#                         cursor.execute(
-#                             """UPDATE core_ratelimit
-#                                SET request_count = request_count + 1
-#                                WHERE user_id = %s AND request_date = %s
-#                                RETURNING request_count""",
-#                             [user.id, today]
-#                         )
-#                         row = cursor.fetchone()
-#
-#                         if row:
-#                             count = row[0]
-#                             cursor.execute('COMMIT')
-#                         else:
-#                             # Insert new
-#                             cursor.execute(
-#                                 """INSERT INTO core_ratelimit (user_id, request_date, request_count)
-#                                    VALUES (%s, %s, 1)""",
-#                                 [user.id, today]
-#                             )
-#                             cursor.execute('COMMIT')
-#                             count = 1
-#
-#                         remaining = limit - count
-#                         return count <= limit, limit, max(0, remaining), reset_time
-#                 else:
-#                     # PostgreSQL path with Django ORM
-#                     rate_limit, created = RateLimit.objects.select_for_update().get_or_create(
-#                         user=user,
-#                         request_date=today,
-#                         defaults={'request_count': 0}
-#                     )
-#
-#                     if not created and rate_limit.request_count >= limit:
-#                         return False, limit, 0, reset_time
-#
-#                     rate_limit.request_count += 1
-#                     rate_limit.save()
-#
-#                     remaining = limit - rate_limit.request_count
-#                     return True, limit, max(0, remaining), reset_time
-#
-#         except Exception as e:
-#             # Fail open (allow request) but log error
-#             import logging
-#             logging.error(f"Rate limit check failed: {e}")
-#             return True, limit, 1, reset_time
-
-
-# ============================================================================
 # DASHBOARD ENDPOINTS
 # ============================================================================
 
 @router.get("/", response=DashboardResponse, auth=auth)
-def get_dashboard(request):
+def get_dashboard(request, response: HttpResponse):
     """
     Get user dashboard with metrics and recent articles.
     Implements tier-based rate limiting and optimized queries.
@@ -328,8 +239,19 @@ def get_dashboard(request):
             ) for art in articles
         ]
 
+    # Get limits
+    today = timezone.now().date()
+    limit = settings.RATE_LIMITS.get(profile.tier, 50)
+    rate_limit = RateLimit.objects.filter(user=user, request_date=today).first()
+    used = rate_limit.request_count if rate_limit else 0
+    remaining = float('inf') if limit == float('inf') else max(0, limit - used)
+
+    # Headers Data from HTTP headers not Json
+    response['X-RateLimit-Limit'] = str(int(limit)) if limit != float('inf') else '-1'
+    response['X-RateLimit-Remaining'] = str(int(remaining)) if remaining != float('inf') else '-1'
+
     # Build response
-    response = DashboardResponse(
+    result = DashboardResponse(
         tier=profile.tier,
         metrics=MetricsSchema(
             articles_24h=articles_24h,
@@ -337,10 +259,14 @@ def get_dashboard(request):
             top_entities=top_entities,
             top_persons_by_language=dict(persons_by_lang)
         ),
-        recent_articles=recent_articles
+        recent_articles=recent_articles,
+        rate_limit_used=used,
+        rate_limit_remaining=int(remaining) if remaining != float('inf') else -1,
+        rate_limit_limit=limit
+
     )
 
-    return response
+    return result
 
 
 @router.get("/articles/{language}", response=ArticleListResponse, auth=auth)

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetrQ Dashboard</title>
+    {% load static %}
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .sentiment-positive { color: #059669; }
@@ -14,343 +15,126 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
-                    <h1 class="text-2xl font-bold text-gray-900">MetrQ</h1>
-                    <span class="ml-2 text-sm text-gray-500">News Analytics</span>
+<!-- Header -->
+<header class="bg-white shadow-sm border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center">
+                <h1 class="text-2xl font-bold text-gray-900">MetrQ</h1>
+                <span class="ml-2 text-sm text-gray-500">News Analytics</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="rate-limit-display" class="text-sm text-gray-600">
+                    Loading limits...
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div id="rate-limit-display" class="text-sm text-gray-600">
-                        Loading limits...
-                    </div>
-                    <span id="user-tier" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span id="user-tier" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {{ tier }}
                     </span>
-                    <a href="#" id="logout-link" class="text-sm text-gray-500 hover:text-gray-900">Logout</a>
+                <!-- Upgrade buttons (dynamically shown/hidden) -->
+                <div id="upgrade-button-container" class="flex items-center space-x-2">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <a href="#" id="logout-link" class="text-sm text-gray-500 hover:text-gray-900">Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Metrics Section -->
+    <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">24-Hour Overview</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-sm text-gray-500 mb-1">Articles Analyzed</p>
+                <p id="metric-articles" class="text-3xl font-bold text-gray-900">--</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-sm text-gray-500 mb-1">Avg Sentiment</p>
+                <p id="metric-sentiment" class="text-3xl font-bold sentiment-neutral">--</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-sm text-gray-500 mb-1">Top Entities</p>
+                <div id="metric-entities" class="text-sm text-gray-700 space-y-1">
+                    Loading...
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-sm text-gray-500 mb-1">Active Languages</p>
+                <div id="metric-languages" class="flex space-x-2 mt-2">
+                    <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">ZH-CN</span>
+                    <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">ZH-TW</span>
+                    <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">EN</span>
+                    <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">RU</span>
                 </div>
             </div>
         </div>
-    </header>
+    </section>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Metrics Section -->
-        <section class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">24-Hour Overview</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white rounded-lg shadow p-6">
-                    <p class="text-sm text-gray-500 mb-1">Articles Analyzed</p>
-                    <p id="metric-articles" class="text-3xl font-bold text-gray-900">--</p>
+    <!-- Language Blocks -->
+    <section class="mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Articles by Language</h2>
+        <div id="language-blocks" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Populated by JavaScript -->
+        </div>
+    </section>
+
+    <!-- Report Generation -->
+    <section class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Generate Report</h2>
+        <div class="flex flex-wrap gap-4 mb-4">
+            <select id="report-type" class="border rounded px-3 py-2">
+                <option value="weekly">Weekly Report</option>
+                <option value="monthly">Monthly Report</option>
+            </select>
+            <select id="report-format" class="border rounded px-3 py-2">
+                <option value="pdf">PDF (with charts)</option>
+                <option value="excel">Excel (with data tables)</option>
+            </select>
+            <!--  another option is to use global object: onclick="window.MetrQDashboard.requestReport()" instead of: id="generate-report-btn"-->
+            <button id="generate-report-btn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition">
+                Generate
+            </button>
+        </div>
+        <div id="report-status" class="hidden">
+            <div class="flex items-center space-x-3 mb-2">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <p class="text-sm text-gray-500 mb-1">Avg Sentiment</p>
-                    <p id="metric-sentiment" class="text-3xl font-bold sentiment-neutral">--</p>
-                </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <p class="text-sm text-gray-500 mb-1">Top Entities</p>
-                    <div id="metric-entities" class="text-sm text-gray-700 space-y-1">
-                        Loading...
-                    </div>
-                </div>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <p class="text-sm text-gray-500 mb-1">Active Languages</p>
-                    <div id="metric-languages" class="flex space-x-2 mt-2">
-                        <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">ZH-CN</span>
-                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">ZH-TW</span>
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">EN</span>
-                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">RU</span>
-                    </div>
-                </div>
+                <span id="progress-text" class="text-sm font-medium w-16">0%</span>
             </div>
-        </section>
+            <p id="status-message" class="text-sm text-gray-600">Queued...</p>
+        </div>
+    </section>
 
-        <!-- Language Blocks -->
-        <section class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Articles by Language</h2>
-            <div id="language-blocks" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Populated by JavaScript -->
-            </div>
-        </section>
+    <!-- Report History -->
+    <section>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Reports</h2>
+        <div id="report-history" class="space-y-2">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+    </section>
+</main>
 
-        <!-- Report Generation -->
-        <section class="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Generate Report</h2>
-            <div class="flex flex-wrap gap-4 mb-4">
-                <select id="report-type" class="border rounded px-3 py-2">
-                    <option value="weekly">Weekly Report</option>
-                    <option value="monthly">Monthly Report</option>
-                </select>
-                <select id="report-format" class="border rounded px-3 py-2">
-                    <option value="pdf">PDF (with charts)</option>
-                    <option value="excel">Excel (with data tables)</option>
-                </select>
-                <button onclick="requestReport()"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition">
-                    Generate
-                </button>
-            </div>
-            <div id="report-status" class="hidden">
-                <div class="flex items-center space-x-3 mb-2">
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
-                    </div>
-                    <span id="progress-text" class="text-sm font-medium w-16">0%</span>
-                </div>
-                <p id="status-message" class="text-sm text-gray-600">Queued...</p>
-            </div>
-        </section>
+<!-- 1. Django config from settings.py -->
+<script>
+    window.DASHBOARD_CONFIG = {
+        API_BASE_URL: '/api',
+        REFRESH_INTERVALS: {{ refresh_intervals|safe }}
+    };
+</script>
 
-        <!-- Report History -->
-        <section>
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Reports</h2>
-            <div id="report-history" class="space-y-2">
-                <p class="text-gray-500">Loading...</p>
-            </div>
-        </section>
-    </main>
+<!-- 2. Download dashboard.JS -->
+<script src="{% static 'js/dashboard.js' %}"></script>
 
-    <!-- Load dashboard utilities -->
-    <script src="/static/js/dashboard.js"></script>
-
-    <script>
-        // Dashboard-specific initialization
-        const API_BASE = '/api';
-
-        // Load dashboard data using fetchWithAuth
-        async function loadDashboard() {
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/dashboard/`);
-                if (!response.ok) throw new Error('Failed to load dashboard');
-
-                const data = await response.json();
-
-                // Update metrics
-                document.getElementById('metric-articles').textContent = data.metrics.articles_24h;
-
-                const sentimentEl = document.getElementById('metric-sentiment');
-                sentimentEl.textContent = data.metrics.avg_sentiment.toFixed(2);
-                sentimentEl.className = 'text-3xl font-bold ' +
-                    (data.metrics.avg_sentiment > 0.3 ? 'sentiment-positive' :
-                     data.metrics.avg_sentiment < -0.3 ? 'sentiment-negative' : 'sentiment-neutral');
-
-                // Update top entities
-                const entitiesContainer = document.getElementById('metric-entities');
-                entitiesContainer.innerHTML = data.metrics.top_entities
-                    .slice(0, 5)
-                    .map(e => `<div class="truncate">${e}</div>`)
-                    .join('');
-
-                // Render language blocks
-                renderLanguageBlocks(data.recent_articles);
-
-                // Update rate limit display
-                updateRateLimitStatus();
-
-            } catch (error) {
-                console.error('Dashboard load error:', error);
-                if (error.message.includes('401') || error.message.includes('Session expired')) {
-                    // Already handled by fetchWithAuth
-                    return;
-                }
-            }
-        }
-
-        function renderLanguageBlocks(articles) {
-            const container = document.getElementById('language-blocks');
-            const languages = {
-                'zh_cn': { name: 'Chinese (Simplified)', color: 'red' },
-                'zh_tw': { name: 'Chinese (Traditional)', color: 'blue' },
-                'en': { name: 'English', color: 'green' },
-                'ru': { name: 'Russian', color: 'yellow' }
-            };
-
-            container.innerHTML = Object.entries(languages).map(([code, info]) => {
-                const langArticles = articles[code] || [];
-                return `
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <div class="bg-${info.color}-50 px-4 py-3 border-b">
-                            <div class="flex justify-between items-center">
-                                <h3 class="font-semibold text-gray-900">${info.name}</h3>
-                                <span class="text-xs text-gray-500">${langArticles.length} articles</span>
-                            </div>
-                        </div>
-                        <div class="p-4 space-y-3 max-h-96 overflow-y-auto">
-                            ${langArticles.map(article => `
-                                <article class="article-card border rounded p-3 text-sm">
-                                    <div class="flex justify-between items-start mb-1">
-                                        <span class="font-medium text-gray-900 truncate flex-1 mr-2">
-                                            ${article.news_provider}
-                                        </span>
-                                        <span class="text-xs ${article.sentiment > 0.3 ? 'text-green-600' : article.sentiment < -0.3 ? 'text-red-600' : 'text-gray-500'}">
-                                            ${article.sentiment.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <a href="${article.url}" target="_blank"
-                                       class="text-blue-600 hover:underline line-clamp-2">
-                                        ${article.title_translated}
-                                    </a>
-                                    <div class="mt-1 text-xs text-gray-500">
-                                        Bias: ${(article.article_bias_profile * 100).toFixed(0)}%
-                                    </div>
-                                </article>
-                            `).join('')}
-                        </div>
-                        <div class="px-4 py-2 bg-gray-50 border-t">
-                            <a href="/dashboard/articles/${code}"
-                               class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                View all →
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        async function updateRateLimitStatus() {
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/dashboard/limits`);
-                const data = await response.json();
-
-                const display = document.getElementById('rate-limit-display');
-                if (data.remaining === -1) {
-                    display.textContent = 'Unlimited';
-                } else {
-                    display.textContent = `${data.remaining}/${data.limit} requests left`;
-                }
-            } catch (e) {
-                console.error('Rate limit check failed:', e);
-            }
-        }
-
-        // Report generation using fetchWithAuth
-        async function requestReport() {
-            const type = document.getElementById('report-type').value;
-            const format = document.getElementById('report-format').value;
-
-            const statusDiv = document.getElementById('report-status');
-            statusDiv.classList.remove('hidden');
-
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/reports/request`, {
-                    method: 'POST',
-                    body: JSON.stringify({ type, format })
-                });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Report request failed');
-                }
-
-                const data = await response.json();
-                pollReportStatus(data.job_id);
-
-            } catch (error) {
-                document.getElementById('status-message').textContent = error.message;
-                document.getElementById('status-message').className = 'text-sm text-red-600';
-            }
-        }
-
-        function pollReportStatus(jobId) {
-            const interval = setInterval(async () => {
-                try {
-                    const response = await fetchWithAuth(`${API_BASE}/reports/status/${jobId}`);
-                    const data = await response.json();
-
-                    document.getElementById('progress-bar').style.width = `${data.progress}%`;
-                    document.getElementById('progress-text').textContent = `${data.progress}%`;
-
-                    const messages = {
-                        'queued': 'Waiting in queue...',
-                        'processing': 'Generating your report...',
-                        'done': 'Ready for download!',
-                        'failed': 'Generation failed. Please try again.'
-                    };
-                    document.getElementById('status-message').textContent = messages[data.status] || data.status;
-
-                    if (data.status === 'done') {
-                        clearInterval(interval);
-                        const downloadBtn = document.createElement('a');
-                        downloadBtn.href = data.download_url;
-                        downloadBtn.className = 'mt-2 inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium';
-                        downloadBtn.textContent = 'Download Report';
-                        document.getElementById('report-status').appendChild(downloadBtn);
-                        loadReportHistory();
-                    } else if (data.status === 'failed') {
-                        clearInterval(interval);
-                        document.getElementById('status-message').textContent = `Error: ${data.error}`;
-                    }
-                } catch (e) {
-                    console.error('Status check failed:', e);
-                }
-            }, 2000);
-        }
-
-        async function loadReportHistory() {
-            try {
-                const response = await fetchWithAuth(`${API_BASE}/reports/history`);
-                const reports = await response.json();
-
-                const container = document.getElementById('report-history');
-                if (reports.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500">No reports generated yet.</p>';
-                    return;
-                }
-
-                container.innerHTML = reports.map(r => `
-                    <div class="flex justify-between items-center bg-white p-4 rounded shadow-sm">
-                        <div>
-                            <p class="font-medium text-gray-900">${r.type} Report (${r.format.toUpperCase()})</p>
-                            <p class="text-sm text-gray-500">${new Date(r.created_at).toLocaleString()}</p>
-                        </div>
-                        <div>
-                            ${r.status === 'done' && r.download_url
-                                ? `<a href="${r.download_url}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Download</a>`
-                                : `<span class="text-sm text-gray-500 capitalize">${r.status}</span>`
-                            }
-                        </div>
-                    </div>
-                `).join('');
-
-            } catch (e) {
-                console.error('History load failed:', e);
-            }
-        }
-
-
-        // Initialize dashboard on load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDashboard();
-            loadReportHistory();
-            setInterval(loadDashboard, 1800000); // Refresh every 30 min
-        });
-
-
-<!--        // Variant 2: Initialize dashboard on load-->
-<!--        document.addEventListener('DOMContentLoaded', () => {-->
-<!--            loadDashboard();-->
-<!--            loadReportHistory();-->
-<!--        // Determine the interval based on the user's tier-->
-<!--        function getRefreshInterval(tier) {-->
-<!--            switch(tier) {-->
-<!--                case 'enterprise': return 60000;  // 1 min-->
-<!--                case 'pro': return 300000;        // 5 min-->
-<!--                case 'free':-->
-<!--                default: return 1800000;          // 30 min-->
-<!--            }-->
-<!--        }-->
-<!--        // Get tier from localStorage (saved during login)-->
-<!--        const userTier = localStorage.getItem('user_tier') || 'free';-->
-<!--        const refreshInterval = getRefreshInterval(userTier);-->
-<!--        // Logging for debugging (can be deleted later)-->
-<!--        console.log(`Dashboard refresh interval: ${refreshInterval/1000} seconds (${userTier} tier)`);-->
-<!--        // Using adaptive interval-->
-<!--          setInterval(loadDashboard, refreshInterval);-->
-<!--        });-->
-
-
-    </script>
+<!-- 3. Init call -->
+<script>
+    // Dashboard-specific initialization
+    document.addEventListener('DOMContentLoaded', () => {
+        window.MetrQDashboard.initDashboard();
+    });
+</script>
 </body>
 </html>

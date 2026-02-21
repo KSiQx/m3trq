@@ -49,12 +49,18 @@ class ReportStatusSchema(Schema):
     download_url: Optional[str]
     error: Optional[str]
 
+class ReportLimitError(Schema):
+    error: str
+    tier: str
+    max_reports: int
+    reports_used: int
+    upgrade_url: str
 
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
 
-@router.post("/request", response=ReportRequestResponse)
+@router.post("/request", response={200: ReportRequestResponse, 403: ReportLimitError})
 def request_report(request, data: ReportRequestSchema):
     """
     Request new report generation task.
@@ -74,13 +80,13 @@ def request_report(request, data: ReportRequestSchema):
 
     # Check quota
     if not profile.can_generate_report():
-        raise HttpError(403, {
-            "error": "Report quota exceeded",
+        return 403, {
+            "error": "Report limit reached",
             "tier": profile.tier,
             "max_reports": profile.max_reports,
             "reports_used": profile.reports_used,
-            "upgrade_url": settings.UPGRADE_URL  # A link to the page where the user can update tariff plan
-        })
+            "upgrade_url": settings.UPGRADE_URL
+        }
 
     # Create report job
     job_id = str(uuid.uuid4())

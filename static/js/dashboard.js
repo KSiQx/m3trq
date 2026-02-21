@@ -10,6 +10,21 @@ const CONFIG = {
     RATE_LIMIT_WARNING_THRESHOLD: 10
 };
 
+
+/**
+ * Modal window in User Dashboard
+ */
+function showErrorToast(message) {
+    // Creates a div with Tailwind classes
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Auto delete after 3 seconds
+    setTimeout(() => toast.remove(), 3000);
+}
+
 /**
  * Get authentication tokens from storage
  */
@@ -160,6 +175,61 @@ function requireAuth() {
     return true;
 }
 
+/**
+ * Load dashboard data using fetchWithAuth
+ */
+async function loadDashboard() {
+    try {
+        const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/dashboard/`);
+        if (!response.ok) throw new Error('Failed to load dashboard');
+
+        // Update rate limit from Headers MUST be before data from response.json
+        updateRateLimitFromHeaders(response.headers)
+
+        const data = await response.json();
+
+        // Update metrics
+        document.getElementById('metric-articles').textContent = data.metrics.articles_24h;
+
+        const sentimentEl = document.getElementById('metric-sentiment');
+        sentimentEl.textContent = data.metrics.avg_sentiment.toFixed(2);
+        sentimentEl.className = 'text-3xl font-bold ' +
+            (data.metrics.avg_sentiment > 0.3 ? 'sentiment-positive' :
+             data.metrics.avg_sentiment < -0.3 ? 'sentiment-negative' : 'sentiment-neutral');
+
+        // Update top entities
+        const entitiesContainer = document.getElementById('metric-entities');
+        entitiesContainer.innerHTML = data.metrics.top_entities
+            .slice(0, 5)
+            .map(e => `<div class="truncate">${e}</div>`)
+            .join('');
+
+        // Update upgrade buttons based on tier
+        updateUpgradeButtons(data.tier);
+
+        // Rendering articles by language
+        renderLanguageBlocks(data.recent_articles);
+
+        // Load report History
+        loadReportHistory();
+
+        // Save the tariff for further use (update interval)
+        localStorage.setItem('user_tier', data.tier);
+
+        // Setting an adaptive refresh interval
+        setAdaptiveRefreshInterval(data.tier);
+
+    } catch (error) {
+        console.error('Dashboard load error:', error);
+        if (error.message.includes('401') || error.message.includes('Session expired')) {
+            // Already handled by fetchWithAuth
+            return;
+        }
+        // Дополнительная обработка других ошибок
+        showErrorToast('Failed to load dashboard data');
+    }
+}
+
 // Legacy functions (keep for compatibility)
 async function pollReportStatus(jobId, onProgress, onComplete, onError) {
     let attempts = 0;
@@ -208,9 +278,24 @@ async function requestReport(type, format) {
 
     if (!response.ok) {
         const error = await response.json();
-        if (response.status === 429) showUpgradePrompt(error);
+        // Only show upgrade prompt for 403 (quota) or 429 (rate limit) on report requests
+        if (response.status === 403 || response.status === 429) {
+            showUpgradePrompt(error);
+        }
         throw new Error(error.error || 'Failed to request report');
     }
+//async function requestReport(type, format) {
+//    const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/reports/request`, {
+//        method: 'POST',
+//        headers: { 'Content-Type': 'application/json' },
+//        body: JSON.stringify({ type, format })
+//    });
+//
+//    if (!response.ok) {
+//        const error = await response.json();
+//        if (response.status === 429 || response.status === 403) showUpgradePrompt(error);
+//        throw new Error(error.error || 'Failed to request report');
+//    }
 
     updateRateLimitFromHeaders(response.headers);
     return await response.json();
@@ -224,12 +309,75 @@ function updateRateLimitFromHeaders(headers) {
         const element = document.getElementById('rate-limit-display');
         if (element) element.textContent = `${remaining}/${limit}`;
 
-        const bar = document.getElementById('rate-limit-bar');
-        if (bar) {
-            const percentage = (parseInt(remaining) / parseInt(limit)) * 100;
-            bar.style.width = `${percentage}%`;
-        }
+//        const bar = document.getElementById('rate-limit-bar');
+//        if (bar) {
+//            const percentage = (parseInt(remaining) / parseInt(limit)) * 100;
+//            bar.style.width = `${percentage}%`;
+//        }
     }
+}
+
+function renderLanguageBlocks(articles) {
+    const container = document.getElementById('language-blocks');
+    const languages = {
+        'zh_cn': { name: 'Chinese (Simplified)', color: 'red' },
+        'zh_tw': { name: 'Chinese (Traditional)', color: 'blue' },
+        'en': { name: 'English', color: 'green' },
+        'ru': { name: 'Russian', color: 'yellow' }
+    };
+
+    container.innerHTML = Object.entries(languages).map(([code, info]) => {
+        const langArticles = articles[code] || [];
+        return `
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="bg-${info.color}-50 px-4 py-3 border-b">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-semibold text-gray-900">${info.name}</h3>
+                        <span class="text-xs text-gray-500">${langArticles.length} articles</span>
+                    </div>
+                </div>
+                <div class="p-4 space-y-3 max-h-96 overflow-y-auto">
+                    ${langArticles.map(article => `
+                        <article class="article-card border rounded p-3 text-sm">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-medium text-gray-900 truncate flex-1 mr-2">
+                                    ${article.news_provider}
+                                </span>
+                                <span class="text-xs ${article.sentiment > 0.3 ? 'text-green-600' : article.sentiment < -0.3 ? 'text-red-600' : 'text-gray-500'}">
+                                    ${article.sentiment.toFixed(2)}
+                                </span>
+                            </div>
+                            <a href="${article.url}" target="_blank"
+                               class="text-blue-600 hover:underline line-clamp-2">
+                                ${article.title_translated}
+                            </a>
+                            <div class="mt-1 text-xs text-gray-500">
+                                Bias: ${(article.article_bias_profile * 100).toFixed(0)}%
+                            </div>
+                        </article>
+                    `).join('')}
+                </div>
+                <div class="px-4 py-2 bg-gray-50 border-t">
+                    <a href="/dashboard/articles/${code}"
+                       class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        View all →
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+
+function setAdaptiveRefreshInterval(tier) {
+    // If the interval is already set, do not create a new one
+    if (window._refreshInterval) clearInterval(window._refreshInterval);
+
+    const intervals = window.DASHBOARD_CONFIG?.REFRESH_INTERVALS ||
+                     { free: 1800000, pro: 300000, enterprise: 60000 };
+    const interval = intervals[tier] || intervals.free;
+    window._refreshInterval = setInterval(loadDashboard, interval);
+    console.log(`Dashboard refresh interval set to ${interval/1000}s for ${tier} tier`);
 }
 
 function renderSentimentGauge(value, elementId) {
@@ -255,19 +403,89 @@ function renderSentimentGauge(value, elementId) {
 }
 
 function showUpgradePrompt(errorData) {
+    // Prevent multiple modals
+    if (document.getElementById('upgrade-modal')) return;
+
     const modal = document.createElement('div');
+    modal.id = 'upgrade-modal';
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+
+    // Handle both rate limit (429) and report quota (403) error formats
+    const isRateLimit = errorData.limit !== undefined;
+    const title = isRateLimit ? 'Rate Limit Exceeded' : 'Report Limit Reached';
+    const message = isRateLimit
+        ? `You've used ${errorData.limit} requests today.`
+        : `${errorData.error}<br>Used: ${errorData.reports_used || 0} / ${errorData.max_reports || 'unlimited'}`;
+
     modal.innerHTML = `
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 class="text-lg font-semibold mb-4">Rate Limit Exceeded</h3>
-            <p class="text-gray-600 mb-4">You've used ${errorData.limit} requests today.</p>
+            <h3 class="text-lg font-semibold mb-4">${title}</h3>
+            <p class="text-gray-600 mb-4">${message}</p>
             <div class="flex justify-end space-x-3">
-                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600">Dismiss</button>
-                <a href="${errorData.upgrade_url || '/upgrade'}" class="px-4 py-2 bg-blue-600 text-white rounded">Upgrade</a>
+                <button onclick="document.getElementById('upgrade-modal').remove()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Dismiss</button>
+                <a href="${errorData.upgrade_url || '/pricing/'}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upgrade</a>
             </div>
         </div>`;
     document.body.appendChild(modal);
 }
+
+function updateUpgradeButtons(tier) {
+    const container = document.getElementById('upgrade-button-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (tier === 'free') {
+        const proButton = document.createElement('a');
+        proButton.href = '/pricing/';
+        proButton.className = 'px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-full transition';
+        proButton.textContent = 'Upgrade to Pro';
+        container.appendChild(proButton);
+    } else if (tier === 'pro') {
+        const enterpriseButton = document.createElement('a');
+        enterpriseButton.href = '/enterprise-info/';
+        enterpriseButton.className = 'px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-full transition';
+        enterpriseButton.textContent = 'Upgrade to Enterprise';
+        container.appendChild(enterpriseButton);
+    } else if (tier === 'enterprise') {
+        const enterpriseBadge = document.createElement('span');
+        enterpriseBadge.className = 'px-3 py-1 bg-gray-600 text-gray-300 text-xs font-medium rounded-full cursor-default';
+        enterpriseBadge.textContent = 'Enterprise';
+        container.appendChild(enterpriseBadge);
+    }
+}
+
+async function loadReportHistory() {
+    try {
+        const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/reports/history`);
+        const reports = await response.json();
+
+        const container = document.getElementById('report-history');
+        if (reports.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">No reports generated yet.</p>';
+            return;
+        }
+
+        container.innerHTML = reports.map(r => `
+            <div class="flex justify-between items-center bg-white p-4 rounded shadow-sm">
+                <div>
+                    <p class="font-medium text-gray-900">${r.type} Report (${r.format.toUpperCase()})</p>
+                    <p class="text-sm text-gray-500">${new Date(r.created_at).toLocaleString()}</p>
+                </div>
+                <div>
+                    ${r.status === 'done' && r.download_url
+                        ? `<a href="${r.download_url}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Download</a>`
+                        : `<span class="text-sm text-gray-500 capitalize">${r.status}</span>`
+                    }
+                </div>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        console.error('History load failed:', e);
+    }
+}
+
 
 // Initialize dashboard
 function initDashboard() {
@@ -286,240 +504,120 @@ function initDashboard() {
         });
     }
 
-    // Initialize report form if present
-    const reportForm = document.getElementById('report-form');
-    if (reportForm) {
-        reportForm.addEventListener('submit', async (e) => {
+
+    // Initialize button-based report generation
+    const generateBtn = document.getElementById('generate-report-btn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            const type = document.getElementById('report-type').value;
-            const format = document.getElementById('report-format').value;
-            const submitBtn = reportForm.querySelector('button[type="submit"]');
+
+            const typeSelect = document.getElementById('report-type');
+            const formatSelect = document.getElementById('report-format');
             const statusDiv = document.getElementById('report-status');
 
-            submitBtn.disabled = true;
+            if (!typeSelect || !formatSelect) {
+                console.error('Report type or format select not found');
+                return;
+            }
+
+            const type = typeSelect.value;
+            const format = formatSelect.value;
+
+            // Show status area
+            if (statusDiv) {
+                statusDiv.classList.remove('hidden');
+            }
+
+            generateBtn.disabled = true;
+
             try {
                 const job = await requestReport(type, format);
-                statusDiv.innerHTML = `<div class="p-4 bg-blue-50">Generating ${format.toUpperCase()}... Job: ${job.job_id}</div>`;
+
+                // Reset status area for polling
+                if (statusDiv) {
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span id="progress-text" class="text-sm font-medium w-16">0%</span>
+                        </div>
+                        <p id="status-message" class="text-sm text-gray-600">Queued...</p>
+                    `;
+                }
 
                 pollReportStatus(
                     job.job_id,
                     (progress, status) => {
                         const bar = document.getElementById('progress-bar');
+                        const text = document.getElementById('progress-text');
                         if (bar) bar.style.width = `${progress}%`;
+                        if (text) text.textContent = `${progress}%`;
+
+                        const statusMsg = document.getElementById('status-message');
+                        if (statusMsg) {
+                            const messages = {
+                                'queued': 'Waiting in queue...',
+                                'processing': 'Generating your report...',
+                                'done': 'Ready for download!',
+                                'failed': 'Generation failed. Please try again.'
+                            };
+                            statusMsg.textContent = messages[status] || status;
+                        }
                     },
                     (url) => {
-                        statusDiv.innerHTML = `<div class="p-4 bg-green-50"><a href="${url}" class="text-blue-600">Download Ready</a></div>`;
-                        submitBtn.disabled = false;
+                        const statusMsg = document.getElementById('status-message');
+                        if (statusMsg) {
+                            statusMsg.innerHTML = `<a href="${url}" class="text-blue-600 font-medium hover:underline">Download Report</a>`;
+                            statusMsg.className = 'text-sm text-green-600';
+                        }
+                        generateBtn.disabled = false;
                     },
                     (error) => {
-                        statusDiv.innerHTML = `<div class="p-4 bg-red-50">Error: ${error}</div>`;
-                        submitBtn.disabled = false;
+                        const statusMsg = document.getElementById('status-message');
+                        if (statusMsg) {
+                            statusMsg.textContent = `Error: ${error}`;
+                            statusMsg.className = 'text-sm text-red-600';
+                        }
+                        generateBtn.disabled = false;
                     }
                 );
             } catch (error) {
-                statusDiv.innerHTML = `<div class="p-4 bg-red-50">${error.message}</div>`;
-                submitBtn.disabled = false;
+                // Error already handled by showUpgradePrompt for 403/429
+                // Just update status message
+                const statusMsg = document.getElementById('status-message');
+                if (statusMsg) {
+                    statusMsg.textContent = error.message;
+                    statusMsg.className = 'text-sm text-red-600';
+                }
+                generateBtn.disabled = false;
             }
         });
     }
+    loadDashboard();
 }
 
-// Auto-initialize on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDashboard);
-} else {
-    initDashboard();
-}
+
+//// Auto-initialize on DOM ready
+//if (document.readyState === 'loading') {
+//    document.addEventListener('DOMContentLoaded', initDashboard);
+//} else {
+//    initDashboard();
+//}
 
 // Export utilities for use in other scripts
 window.MetrQDashboard = {
-    pollReportStatus,
+    initDashboard,
+    loadDashboard,
+    loadReportHistory,
     requestReport,
+    pollReportStatus,
     renderSentimentGauge,
     getAuthToken,
     getRefreshToken,
     fetchWithAuth,
     logoutUser,
     isAuthenticated,
-    requireAuth
+    requireAuth,
+    updateUpgradeButtons
 };
-
-//const CONFIG = {
-//    POLL_INTERVAL: 2000,
-//    MAX_POLL_ATTEMPTS: 150,
-//    API_BASE_URL: '/api',
-//    RATE_LIMIT_WARNING_THRESHOLD: 10
-//};
-//
-//async function pollReportStatus(jobId, onProgress, onComplete, onError) {
-//    let attempts = 0;
-//    const token = getAuthToken();
-//
-//    const poll = async () => {
-//        try {
-//            const response = await fetch(`${CONFIG.API_BASE_URL}/reports/status/${jobId}`, {
-//                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
-//            });
-//
-//            if (!response.ok) {
-//                const error = await response.json();
-//                throw new Error(error.error || 'Failed to fetch status');
-//            }
-//
-//            const data = await response.json();
-//            if (onProgress) onProgress(data.progress || 0, data.status);
-//
-//            if (data.status === 'done') {
-//                if (onComplete) onComplete(data.download_url);
-//                return;
-//            }
-//
-//            if (data.status === 'failed') {
-//                throw new Error(data.error || 'Report generation failed');
-//            }
-//
-//            attempts++;
-//            if (attempts < CONFIG.MAX_POLL_ATTEMPTS) {
-//                setTimeout(poll, CONFIG.POLL_INTERVAL);
-//            } else {
-//                throw new Error('Report generation timeout');
-//            }
-//        } catch (error) {
-//            if (onError) onError(error.message);
-//        }
-//    };
-//
-//    poll();
-//}
-//
-//async function requestReport(type, format) {
-//    const token = getAuthToken();
-//    const response = await fetch(`${CONFIG.API_BASE_URL}/reports/request`, {
-//        method: 'POST',
-//        headers: {
-//            'Authorization': `Bearer ${token}`,
-//            'Content-Type': 'application/json',
-//            'Accept': 'application/json'
-//        },
-//        body: JSON.stringify({ type, format })
-//    });
-//
-//    if (!response.ok) {
-//        const error = await response.json();
-//        if (response.status === 429) showUpgradePrompt(error);
-//        throw new Error(error.error || 'Failed to request report');
-//    }
-//
-//    updateRateLimitFromHeaders(response.headers);
-//    return await response.json();
-//}
-//
-//function updateRateLimitFromHeaders(headers) {
-//    const limit = headers.get('X-RateLimit-Limit');
-//    const remaining = headers.get('X-RateLimit-Remaining');
-//
-//    if (limit && remaining) {
-//        const element = document.getElementById('rate-limit-display');
-//        if (element) element.textContent = `${remaining}/${limit}`;
-//
-//        const bar = document.getElementById('rate-limit-bar');
-//        if (bar) {
-//            const percentage = (parseInt(remaining) / parseInt(limit)) * 100;
-//            bar.style.width = `${percentage}%`;
-//        }
-//    }
-//}
-//
-//function renderSentimentGauge(value, elementId) {
-//    const container = document.getElementById(elementId);
-//    if (!container) return;
-//
-//    const percentage = ((value + 1) / 2) * 100;
-//    let colorClass = 'bg-gray-500', label = 'Neutral';
-//
-//    if (value > 0.3) { colorClass = 'bg-green-500'; label = 'Positive'; }
-//    else if (value < -0.3) { colorClass = 'bg-red-500'; label = 'Negative'; }
-//
-//    container.innerHTML = `
-//        <div class="relative pt-1">
-//            <div class="flex mb-2 items-center justify-between">
-//                <span class="text-xs font-semibold py-1 px-2 rounded-full bg-gray-200">${label}</span>
-//                <span class="text-xs font-semibold">${value.toFixed(2)}</span>
-//            </div>
-//            <div class="overflow-hidden h-2 mb-4 flex rounded bg-gray-200">
-//                <div style="width: ${percentage}%" class="${colorClass} h-full transition-all"></div>
-//            </div>
-//        </div>`;
-//}
-//
-//function showUpgradePrompt(errorData) {
-//    const modal = document.createElement('div');
-//    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-//    modal.innerHTML = `
-//        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-//            <h3 class="text-lg font-semibold mb-4">Rate Limit Exceeded</h3>
-//            <p class="text-gray-600 mb-4">You've used ${errorData.limit} requests today.</p>
-//            <div class="flex justify-end space-x-3">
-//                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-gray-600">Dismiss</button>
-//                <a href="${errorData.upgrade_url || '/upgrade'}" class="px-4 py-2 bg-blue-600 text-white rounded">Upgrade</a>
-//            </div>
-//        </div>`;
-//    document.body.appendChild(modal);
-//}
-//
-//function getAuthToken() {
-//    return localStorage.getItem('metrq_token') ||
-//           document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || '';
-//}
-//
-//function initDashboard() {
-//    const token = getAuthToken();
-//    if (!token && !window.location.pathname.includes('/login')) {
-//        window.location.href = '/login';
-//        return;
-//    }
-//
-//    const reportForm = document.getElementById('report-form');
-//    if (reportForm) {
-//        reportForm.addEventListener('submit', async (e) => {
-//            e.preventDefault();
-//            const type = document.getElementById('report-type').value;
-//            const format = document.getElementById('report-format').value;
-//            const submitBtn = reportForm.querySelector('button[type="submit"]');
-//            const statusDiv = document.getElementById('report-status');
-//
-//            submitBtn.disabled = true;
-//            try {
-//                const job = await requestReport(type, format);
-//                statusDiv.innerHTML = `<div class="p-4 bg-blue-50">Generating ${format.toUpperCase()}... Job: ${job.job_id}</div>`;
-//
-//                pollReportStatus(
-//                    job.job_id,
-//                    (progress, status) => {
-//                        const bar = document.getElementById('progress-bar');
-//                        if (bar) bar.style.width = `${progress}%`;
-//                    },
-//                    (url) => {
-//                        statusDiv.innerHTML = `<div class="p-4 bg-green-50"><a href="${url}" class="text-blue-600">Download Ready</a></div>`;
-//                        submitBtn.disabled = false;
-//                    },
-//                    (error) => {
-//                        statusDiv.innerHTML = `<div class="p-4 bg-red-50">Error: ${error}</div>`;
-//                        submitBtn.disabled = false;
-//                    }
-//                );
-//            } catch (error) {
-//                statusDiv.innerHTML = `<div class="p-4 bg-red-50">${error.message}</div>`;
-//                submitBtn.disabled = false;
-//            }
-//        });
-//    }
-//}
-//
-//if (document.readyState === 'loading') {
-//    document.addEventListener('DOMContentLoaded', initDashboard);
-//} else {
-//    initDashboard();
-//}
-//
-//window.MetrQDashboard = { pollReportStatus, requestReport, renderSentimentGauge, getAuthToken };

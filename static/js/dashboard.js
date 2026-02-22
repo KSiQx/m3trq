@@ -204,7 +204,9 @@ async function loadDashboard() {
             .map(e => `<div class="truncate">${e}</div>`)
             .join('');
 
+
         // Update upgrade buttons based on tier
+        document.getElementById('user-tier').textContent = data.tier;
         updateUpgradeButtons(data.tier);
 
         // Rendering articles by language
@@ -284,19 +286,6 @@ async function requestReport(type, format) {
         }
         throw new Error(error.error || 'Failed to request report');
     }
-//async function requestReport(type, format) {
-//    const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/reports/request`, {
-//        method: 'POST',
-//        headers: { 'Content-Type': 'application/json' },
-//        body: JSON.stringify({ type, format })
-//    });
-//
-//    if (!response.ok) {
-//        const error = await response.json();
-//        if (response.status === 429 || response.status === 403) showUpgradePrompt(error);
-//        throw new Error(error.error || 'Failed to request report');
-//    }
-
     updateRateLimitFromHeaders(response.headers);
     return await response.json();
 }
@@ -307,13 +296,12 @@ function updateRateLimitFromHeaders(headers) {
 
     if (limit && remaining) {
         const element = document.getElementById('rate-limit-display');
-        if (element) element.textContent = `${remaining}/${limit}`;
-
-//        const bar = document.getElementById('rate-limit-bar');
-//        if (bar) {
-//            const percentage = (parseInt(remaining) / parseInt(limit)) * 100;
-//            bar.style.width = `${percentage}%`;
-//        }
+        if (element) element.textContent = remaining === '-1' ? 'Unlimited' : `${remaining}/${limit}`;
+        const bar = document.getElementById('rate-limit-bar');
+        if (bar) {
+          const percentage = (parseInt(remaining) / parseInt(limit)) * 100;
+          bar.style.width = `${percentage}%`;
+        }
     }
 }
 
@@ -403,6 +391,7 @@ function renderSentimentGauge(value, elementId) {
 }
 
 function showUpgradePrompt(errorData) {
+
     // Prevent multiple modals
     if (document.getElementById('upgrade-modal')) return;
 
@@ -414,8 +403,26 @@ function showUpgradePrompt(errorData) {
     const isRateLimit = errorData.limit !== undefined;
     const title = isRateLimit ? 'Rate Limit Exceeded' : 'Report Limit Reached';
     const message = isRateLimit
-        ? `You've used ${errorData.limit} requests today.`
-        : `${errorData.error}<br>Used: ${errorData.reports_used || 0} / ${errorData.max_reports || 'unlimited'}`;
+        ? `You have used ${errorData.limit} requests today`
+        : `${errorData.error}<br>Used: ${errorData.reports_used || 0} / ${errorData.max_reports || 'Unlimited'}`;
+
+    // Determine the correct URL for the Upgrade btn depending on the tariff
+    let upgradeUrl = '/pricing';
+    if (!isRateLimit && errorData.tier) {
+        // Report limit error (403) and the tariff is known
+        if (errorData.tier === 'free') {
+            upgradeUrl = '/pricing';
+        } else if (errorData.tier === 'pro') {
+            upgradeUrl = '/enterprise-info';
+        } else {
+            // Just in case the tariff is different (enterprise) - but enterprise has limit 999 and need to update limits
+            upgradeUrl = errorData.upgrade_url || '/enterprise-info';
+        }
+    } else {
+        // For rate limit (429) we use upgrade_url from the response or /enterprise-info
+        upgradeUrl = errorData.upgrade_url || '/enterprise-info';
+    }
+
 
     modal.innerHTML = `
         <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -423,7 +430,7 @@ function showUpgradePrompt(errorData) {
             <p class="text-gray-600 mb-4">${message}</p>
             <div class="flex justify-end space-x-3">
                 <button onclick="document.getElementById('upgrade-modal').remove()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Dismiss</button>
-                <a href="${errorData.upgrade_url || '/pricing/'}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upgrade</a>
+                <a href="${upgradeUrl}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Upgrade</a>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -437,13 +444,13 @@ function updateUpgradeButtons(tier) {
 
     if (tier === 'free') {
         const proButton = document.createElement('a');
-        proButton.href = '/pricing/';
+        proButton.href = '/pricing';
         proButton.className = 'px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-full transition';
         proButton.textContent = 'Upgrade to Pro';
         container.appendChild(proButton);
     } else if (tier === 'pro') {
         const enterpriseButton = document.createElement('a');
-        enterpriseButton.href = '/enterprise-info/';
+        enterpriseButton.href = '/enterprise-info';
         enterpriseButton.className = 'px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-full transition';
         enterpriseButton.textContent = 'Upgrade to Enterprise';
         container.appendChild(enterpriseButton);
@@ -456,42 +463,52 @@ function updateUpgradeButtons(tier) {
 }
 
 async function loadReportHistory() {
+    const container = document.getElementById('report-history');
+    if (!container) return;
+
+    // Show loading indicator
+    container.innerHTML = '<p class="text-gray-500">Loading reports...</p>';
+
     try {
-        const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/reports/history`);
-        const reports = await response.json();
+      const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/reports/history`);
+      const reports = await response.json();
 
-        const container = document.getElementById('report-history');
-        if (reports.length === 0) {
-            container.innerHTML = '<p class="text-gray-500">No reports generated yet.</p>';
-            return;
-        }
+      if (reports.length === 0) {
+        container.innerHTML = '<p class="text-gray-500">No reports generated yet.</p>';
+        return;
+      }
 
-        container.innerHTML = reports.map(r => `
-            <div class="flex justify-between items-center bg-white p-4 rounded shadow-sm">
-                <div>
-                    <p class="font-medium text-gray-900">${r.type} Report (${r.format.toUpperCase()})</p>
-                    <p class="text-sm text-gray-500">${new Date(r.created_at).toLocaleString()}</p>
-                </div>
-                <div>
-                    ${r.status === 'done' && r.download_url
-                        ? `<a href="${r.download_url}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Download</a>`
-                        : `<span class="text-sm text-gray-500 capitalize">${r.status}</span>`
-                    }
-                </div>
-            </div>
-        `).join('');
+      // Preserve scroll position if needed (optional enhancement)
+      const scrollTop = container.scrollTop;
 
+      container.innerHTML = reports.map(r => `
+        <div class="flex justify-between items-center bg-white p-4 rounded shadow-sm">
+          <div>
+            <p class="font-medium text-gray-900">${r.type} Report (${r.format.toUpperCase()})</p>
+            <p class="text-sm text-gray-500">${new Date(r.created_at).toLocaleString()}</p>
+          </div>
+          <div>
+            ${r.status === 'done' && r.download_url ?
+              `<a href="${r.download_url}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Download</a>` :
+              `<span class="text-sm text-gray-500 capitalize">${r.status}</span>`
+            }
+          </div>
+        </div>
+      `).join('');
+
+      // Restore scroll (if was scrolled)
+      container.scrollTop = scrollTop;
     } catch (e) {
-        console.error('History load failed:', e);
+      console.error('History load failed', e);
+      container.innerHTML = '<p class="text-red-500 text-sm">Failed to load reports. Please refresh.</p>';
     }
 }
-
 
 // Initialize dashboard
 function initDashboard() {
     // Check authentication
     if (!isAuthenticated() && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login/';
+        window.location.href = '/login';
         return;
     }
 
@@ -511,6 +528,9 @@ function initDashboard() {
         generateBtn.addEventListener('click', async (e) => {
             e.preventDefault();
 
+            // Prevent double-click while processing
+            if (generateBtn.disabled) return;
+
             const typeSelect = document.getElementById('report-type');
             const formatSelect = document.getElementById('report-format');
             const statusDiv = document.getElementById('report-status');
@@ -527,10 +547,10 @@ function initDashboard() {
             if (statusDiv) {
                 statusDiv.classList.remove('hidden');
             }
-
             generateBtn.disabled = true;
 
             try {
+                // Request report
                 const job = await requestReport(type, format);
 
                 // Reset status area for polling
@@ -546,6 +566,10 @@ function initDashboard() {
                     `;
                 }
 
+                // Refresh history to show queued report
+                await loadReportHistory();
+
+                // Poll status with history refresh on completion/error
                 pollReportStatus(
                     job.job_id,
                     (progress, status) => {
@@ -565,21 +589,25 @@ function initDashboard() {
                             statusMsg.textContent = messages[status] || status;
                         }
                     },
-                    (url) => {
+                    async (url) => { // onComplete
                         const statusMsg = document.getElementById('status-message');
                         if (statusMsg) {
                             statusMsg.innerHTML = `<a href="${url}" class="text-blue-600 font-medium hover:underline">Download Report</a>`;
                             statusMsg.className = 'text-sm text-green-600';
                         }
                         generateBtn.disabled = false;
+                        // Refresh history on completion
+                        await loadReportHistory();
                     },
-                    (error) => {
+                    async (error) => { // onError
                         const statusMsg = document.getElementById('status-message');
                         if (statusMsg) {
                             statusMsg.textContent = `Error: ${error}`;
                             statusMsg.className = 'text-sm text-red-600';
                         }
                         generateBtn.disabled = false;
+                        // Refresh history on error too
+                        await loadReportHistory();
                     }
                 );
             } catch (error) {
@@ -591,6 +619,7 @@ function initDashboard() {
                     statusMsg.className = 'text-sm text-red-600';
                 }
                 generateBtn.disabled = false;
+                // Don't refresh history here - it was already handled by onError or not needed
             }
         });
     }

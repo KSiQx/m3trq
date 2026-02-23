@@ -24,6 +24,16 @@ class Organization(models.Model):
     def __str__(self):
         return f"{self.name} ({self.enterprise_tag})"
 
+    def save(self, *args, **kwargs):
+        # Automatically convert to lowercase when saving
+        self.enterprise_tag = self.enterprise_tag.lower().strip()
+        super().save(*args, **kwargs)
+
+    @property
+    def display_tag(self):
+        # For display - original register
+        return self.enterprise_tag.title()
+
     @property
     def used_licenses(self):
         """Count active profiles associated with this organization"""

@@ -146,6 +146,7 @@ def _detect_enterprise_organization(nickname: str) -> Optional[Organization]:
                     try:
                         org = Organization.objects.filter(
                             enterprise_tag=tag,
+                            # enterprise_tag__iexact=tag,  # __iexact — case-insensitive search
                             is_active=True
                         ).first()
 
@@ -154,7 +155,6 @@ def _detect_enterprise_organization(nickname: str) -> Optional[Organization]:
                     except Exception:
                         # Continue to next separator if lookup fails
                         continue
-
     return None
 
 

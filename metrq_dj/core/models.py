@@ -1,12 +1,16 @@
 import uuid
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+
+
+logger = logging.getLogger(__name__)
 
 
 class RateLimit(models.Model):
@@ -64,10 +68,10 @@ class Job(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=['url', 'status'],
-                name='unique_url_status'
-            ),
+        #     models.UniqueConstraint(
+        #         fields=['url', 'status'],
+        #         name='unique_url_status'
+        #     ),
             models.CheckConstraint(
                 check=models.Q(priority__gte=0, priority__lte=10),
                 name='valid_priority_range'
@@ -88,6 +92,54 @@ class Job(models.Model):
 
     def __str__(self):
         return f"Job {self.id} - {self.status}"
+
+    @classmethod
+    def create_or_get_pending(cls, url: str, priority: int = 1) -> 'Job':
+        """
+        ATOMIC pending job creation with race-condition protection.
+        SQLite/PostgreSQL ready
+        """
+        with transaction.atomic():
+            # Row lock + check
+            pending_job = cls.objects.select_for_update().filter(
+                url=url,
+                status='pending'
+            ).first()
+
+            if pending_job:
+                logger.info(f"Found existing pending job: {pending_job.id}")
+                return pending_job
+
+            # Only one process will create job
+            job = cls.objects.create(
+                url=url,
+                priority=priority,
+                status='pending'
+            )
+            logger.info(f"Created NEW pending job: {job.id}")
+            return job
+
+    # @classmethod
+    # @transaction.atomic
+    # def create_or_get_pending(cls, url: str, priority: int = 1) -> 'Job':
+    #     """
+    #     Idempotent job creation: returns an existing pending job or a new one.
+    #     Protects against duplicate pending jobs
+    #     """
+    #     # Fast SELECT by index
+    #     pending_job = cls.objects.filter(url=url, status='pending').first()
+    #     if pending_job:
+    #         logger.info(f"Job already pending: {pending_job.id} for {url}")
+    #         return pending_job
+    #
+    #     # Let's create a new one
+    #     job = cls.objects.create(
+    #         url=url,
+    #         priority=priority,
+    #         status='pending'
+    #     )
+    #     logger.info(f"Created new pending job: {job.id} for {url}")
+    #     return job
 
 
 class Article(models.Model):

@@ -7,7 +7,7 @@ from datetime import timedelta
 from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html
-from django.db import models
+from django.db import models, transaction
 from django import forms
 
 from .models import Job, ProviderLog, ProviderApiKey, Article, RateLimit, Report
@@ -118,14 +118,38 @@ class JobAdmin(admin.ModelAdmin):
 
     age.short_description = 'Age'
 
-    @admin.action(description='Reset selected jobs to pending')
-    def reset_to_pending(self, request, queryset):
-        updated = queryset.update(
-            status='pending',
-            locked_by=None,
-            locked_at=None
-        )
-        self.message_user(request, f'{updated} jobs reset to pending')
+
+    @admin.action(description='Reset to NEW pending (safe)')
+    def reset_to_pending_safe(self, request, queryset):
+        """Creates NEW pending tasks without duplicates"""
+        created_count = 0
+        with transaction.atomic():
+            for job in queryset.filter(status__in=['processing', 'failed', 'timeout']):
+                # Atomically creates/returns pending
+                new_pending = Job.create_or_get_pending(job.url, job.priority)
+                if str(new_pending.id) != str(job.id):
+                    created_count += 1
+                    self.log_change(request, new_pending, f"Created from reset")
+
+        self.message_user(request, f'Created {created_count} new pending jobs')
+    # @admin.action(description='Reset to pending (safe)')
+    # def reset_to_pending_safe(self, request, queryset):
+    #     """Safe reset: use create_or_get_pending logic"""
+    #     reset_count = 0
+    #     for job in queryset.filter(status__in=['processing', 'failed', 'timeout']):
+    #         # Creates a new pending task if there is no active one.
+    #         new_job = Job.create_or_get_pending(job.url, job.priority)
+    #         if new_job != job:
+    #             reset_count += 1
+    #     self.message_user(request, f'Created {reset_count} new pending jobs')
+    # @admin.action(description='Reset selected jobs to pending')
+    # def reset_to_pending(self, request, queryset):
+    #     updated = queryset.update(
+    #         status='pending',
+    #         locked_by=None,
+    #         locked_at=None
+    #     )
+    #     self.message_user(request, f'{updated} jobs reset to pending')
 
     @admin.action(description='Mark selected jobs as failed')
     def mark_failed(self, request, queryset):

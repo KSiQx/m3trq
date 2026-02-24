@@ -17,7 +17,7 @@ from ninja import Router, Schema, Query
 from ninja.security import HttpBearer
 from ninja.errors import HttpError
 
-from core.models import Article, RateLimit, ProviderLog
+from core.models import Article, RateLimit, ProviderLog, Announcement
 from accounts.models import Profile
 
 logger = logging.getLogger(__name__)
@@ -155,6 +155,15 @@ class BiasExplanationSchema(Schema):
     provider: str
     bias_score: float
     explanation: str
+
+
+class AnnouncementSchema(Schema):
+    """
+    Schema for active announcement response.
+    """
+    id: int
+    message: str
+    link_url: Optional[str] = None
 
 
 # ============================================================================
@@ -374,4 +383,33 @@ def get_provider_bias(request, provider_name: str):
         "provider": provider_name,
         "bias_score": round(avg_bias, 3),
         "explanation": explanation
+    }
+
+
+@router.get("/announcement", response={200: AnnouncementSchema, 204: None}, auth=auth)
+def get_active_announcement(request):
+    """
+    Get the currently active announcement for display in dashboard banner.
+    Returns 204 No Content if no active announcement exists.
+    """
+    now = timezone.now()
+
+    # Single query that handles all date scenarios correctly
+    announcement = Announcement.objects.filter(
+        is_active=True
+    ).filter(
+        # start_date is null OR start_date <= now
+        Q(start_date__isnull=True) | Q(start_date__lte=now)
+    ).filter(
+        # end_date is null OR end_date >= now
+        Q(end_date__isnull=True) | Q(end_date__gte=now)
+    ).order_by('-priority', '-created_at').first()
+
+    if not announcement:
+        return 204, None
+
+    return 200, {
+        "id": announcement.id,
+        "message": announcement.message,
+        "link_url": announcement.link_url
     }

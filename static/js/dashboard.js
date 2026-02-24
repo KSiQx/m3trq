@@ -504,6 +504,140 @@ async function loadReportHistory() {
     }
 }
 
+
+/**
+ * Load and display announcement banner
+ */
+async function loadAnnouncement() {
+    const bannerContainer = document.getElementById('announcement-banner');
+    if (!bannerContainer) return;
+
+    // Check if we already have a banner rendered (avoid duplicates)
+    if (bannerContainer.dataset.loaded === 'true') return;
+
+    try {
+        const response = await fetchWithAuth(`${CONFIG.API_BASE_URL}/dashboard/announcement`);
+
+        // Handle 204 No Content (no active announcement)
+        if (response.status === 204) {
+            bannerContainer.classList.add('hidden');
+            bannerContainer.innerHTML = '';
+            return;
+        }
+
+        if (!response.ok) throw new Error('Failed to load announcement');
+
+        const announcement = await response.json();
+
+        // Check if user dismissed this announcement in this session
+        const dismissedKey = `dismissed_announcement_${announcement.id}`;
+        if (localStorage.getItem(dismissedKey) === 'true') {
+            bannerContainer.classList.add('hidden');
+            return;
+        }
+
+        // Render banner
+        renderBanner(announcement, bannerContainer, dismissedKey);
+
+    } catch (error) {
+        console.error('Announcement load error:', error);
+        // Fail silently - banner is not critical
+        bannerContainer.classList.add('hidden');
+    }
+}
+
+/**
+ * Render announcement banner HTML
+ */
+function renderBanner(announcement, container, dismissedKey) {
+    const hasLink = announcement.link_url && announcement.link_url.trim() !== '';
+
+    // Create banner HTML structure
+    const bannerHTML = `
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 animate-fade-in">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between py-3">
+                    <div class="flex-1 flex items-center justify-center">
+                        ${hasLink ? `
+                            <a href="${escapeHtml(announcement.link_url)}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="flex items-center text-sm text-blue-800 hover:text-blue-900 font-medium cursor-pointer group">
+                                <svg class="w-4 h-4 mr-2 flex-shrink-0 text-blue-500 group-hover:text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-center">${announcement.message}</span>
+                                <svg class="w-3 h-3 ml-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                </svg>
+                            </a>
+                        ` : `
+                            <div class="flex items-center text-sm text-blue-800 font-medium">
+                                <svg class="w-4 h-4 mr-2 flex-shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-center">${announcement.message}</span>
+                            </div>
+                        `}
+                    </div>
+                    <button onclick="dismissAnnouncement('${dismissedKey}', this)"
+                            class="ml-4 p-1 rounded-full text-blue-400 hover:text-blue-600 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                            aria-label="Dismiss announcement">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = bannerHTML;
+    container.classList.remove('hidden');
+    container.dataset.loaded = 'true';
+}
+
+/**
+ * Dismiss announcement and store in localStorage
+ */
+function dismissAnnouncement(storageKey, buttonElement) {
+    // Store dismissal
+    localStorage.setItem(storageKey, 'true');
+
+    // Animate out
+    const banner = buttonElement.closest('.animate-fade-in');
+    if (banner) {
+        banner.style.transition = 'all 0.3s ease-out';
+        banner.style.opacity = '0';
+        banner.style.transform = 'translateY(-100%)';
+
+        setTimeout(() => {
+            const container = document.getElementById('announcement-banner');
+            if (container) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+            }
+        }, 300);
+    } else {
+        const container = document.getElementById('announcement-banner');
+        if (container) {
+            container.classList.add('hidden');
+            container.innerHTML = '';
+        }
+    }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
 // Initialize dashboard
 function initDashboard() {
     // Check authentication
@@ -511,6 +645,9 @@ function initDashboard() {
         window.location.href = '/login';
         return;
     }
+
+    // Load announcement banner (before other content)
+    loadAnnouncement();
 
     // Attach logout handler if element exists
     const logoutLink = document.getElementById('logout-link');

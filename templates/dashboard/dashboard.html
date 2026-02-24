@@ -12,9 +12,33 @@
         .sentiment-neutral { color: #6b7280; }
         .article-card { transition: all 0.2s; }
         .article-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        /* Announcement banner animation */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeInDown 0.3s ease-out;
+        }
+
+        /* Ensure banner doesn't affect layout when hidden */
+        #announcement-banner.hidden {
+            display: none;
+        }
+
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+<!-- Announcement Banner (injected by JS) -->
+<div id="announcement-banner" class="hidden"></div>
 <!-- Header -->
 <header class="bg-white shadow-sm border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

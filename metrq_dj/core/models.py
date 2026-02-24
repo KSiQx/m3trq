@@ -119,28 +119,6 @@ class Job(models.Model):
             logger.info(f"Created NEW pending job: {job.id}")
             return job
 
-    # @classmethod
-    # @transaction.atomic
-    # def create_or_get_pending(cls, url: str, priority: int = 1) -> 'Job':
-    #     """
-    #     Idempotent job creation: returns an existing pending job or a new one.
-    #     Protects against duplicate pending jobs
-    #     """
-    #     # Fast SELECT by index
-    #     pending_job = cls.objects.filter(url=url, status='pending').first()
-    #     if pending_job:
-    #         logger.info(f"Job already pending: {pending_job.id} for {url}")
-    #         return pending_job
-    #
-    #     # Let's create a new one
-    #     job = cls.objects.create(
-    #         url=url,
-    #         priority=priority,
-    #         status='pending'
-    #     )
-    #     logger.info(f"Created new pending job: {job.id} for {url}")
-    #     return job
-
 
 class Article(models.Model):
     """News articles with sentiment analysis"""
@@ -348,3 +326,68 @@ class ProviderApiKey(models.Model):
 
         except cls.DoesNotExist:
             return False
+
+
+class Announcement(models.Model):
+    """
+    Announcement banner for dashboard communication.
+    Displays active announcements to authenticated users.
+    """
+    title = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Internal name for admin reference"
+    )
+    message = models.TextField(
+        help_text="Banner text to display (HTML allowed for basic formatting)"
+    )
+    link_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="Optional URL to open when banner is clicked"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Enable/disable this announcement"
+    )
+    start_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When to start showing (empty = immediately)"
+    )
+    end_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When to stop showing (empty = indefinite)"
+    )
+    priority = models.IntegerField(
+        default=0,
+        help_text="Higher priority announcements shown first"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', '-created_at']
+        verbose_name = "Announcement"
+        verbose_name_plural = "Announcements"
+
+    def __str__(self):
+        return self.title or f"Announcement #{self.id}"
+
+    def is_currently_active(self):
+        """Check if announcement should be displayed now."""
+        if not self.is_active:
+            return False
+
+        now = timezone.now()
+
+        # Check start_date (if set, must be <= now)
+        if self.start_date is not None and now < self.start_date:
+            return False
+
+        # Check end_date (if set, must be >= now)
+        if self.end_date is not None and now > self.end_date:
+            return False
+
+        return True

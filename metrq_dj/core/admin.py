@@ -11,6 +11,51 @@ from django.db import models, transaction
 from django import forms
 
 from .models import Job, ProviderLog, ProviderApiKey, Article, RateLimit, Report
+from .models import Announcement
+
+
+# ============================================================================
+# ANNOUNCEMENT ADMIN
+# ============================================================================
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = [
+        'title',
+        'message_short',
+        'is_active',
+        'priority',
+        'start_date',
+        'end_date',
+        'created_at'
+    ]
+    list_filter = [
+        'is_active',
+        ('start_date', admin.DateFieldListFilter),
+        ('end_date', admin.DateFieldListFilter),
+        'priority'
+    ]
+    search_fields = ['title', 'message']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Content', {
+            'fields': ('title', 'message', 'link_url')
+        }),
+        ('Scheduling', {
+            'fields': ('is_active', 'start_date', 'end_date', 'priority'),
+            'description': 'Set start/end dates to schedule announcements. Leave blank for immediate/indefinite display.'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+
+    def message_short(self, obj):
+        if len(obj.message) > 50:
+            return obj.message[:50] + '...'
+        return obj.message
+    message_short.short_description = 'Message Preview'
 
 
 # ============================================================================

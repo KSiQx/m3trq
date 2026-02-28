@@ -17,6 +17,7 @@ services:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
+    # Pre-pull model on startup
     command: >
       sh -c "ollama serve &
              sleep 10 &&
@@ -51,6 +52,39 @@ services:
     deploy:
       replicas: 2  # Scale to 5 for production
     command: celery -A worker.celeryconfig worker --loglevel=${LOG_LEVEL} --concurrency=1 --pool=prefork -Q reports_fast,reports_slow,default,batch,provider
+
+  # Dedicated worker for LLM tasks (GPU-protected)
+  worker-llm:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    command: >
+      celery -A worker worker 
+      -Q llm_tasks 
+      --concurrency=1 
+      --loglevel=info 
+      -n llm-worker@%h
+    environment:
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - OLLAMA_HOST=http://ollama:11434
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - ollama
+    volumes:
+      - ./metrq_dj:/app/metrq_dj
+      - ./worker:/app/worker
+      - ./modules:/app/modules
+      - ./config:/app/config
+    # If using GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 
   beat:
     build:

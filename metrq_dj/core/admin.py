@@ -10,8 +10,7 @@ from django.utils.html import format_html
 from django.db import models, transaction
 from django import forms
 
-from .models import Job, ProviderLog, ProviderApiKey, Article, RateLimit, Report
-from .models import Announcement
+from .models import Job, ProviderLog, ProviderApiKey, Article, RateLimit, Report, Announcement
 
 
 # ============================================================================
@@ -69,6 +68,7 @@ class JobAdmin(admin.ModelAdmin):
         'url_short',
         'status_badge',
         'priority',
+        'retries',
         'locked_by_short',
         'enqueued_at',
         'age'
@@ -351,28 +351,54 @@ class ProviderApiKeyAdmin(admin.ModelAdmin):
 @admin.register(Article)
 class ArticleAdmin(admin.ModelAdmin):
     list_display = [
-        'title_short',
-        'language',
+        'title_origin',
         'news_provider',
-        'sentiment_badge',
+        'language',
+        'status',
+        'importance_score',
+        'sentiment',
         'scraped_at'
     ]
     list_filter = [
+        'status',
         'language',
+        'source_category',
         'news_provider',
         ('scraped_at', admin.DateFieldListFilter)
     ]
     search_fields = [
         'title_origin',
         'title_translated',
+        'url'
         'text_origin',
         'entities'
     ]
-    readonly_fields = ['id', 'scraped_at', 'updated_at']
+    readonly_fields = ['id', 'scraped_at', 'updated_at', 'version']
+    fieldsets = (
+        ('Content', {
+            'fields': ('title_origin', 'title_translated', 'text_origin', 'text_translated', 'url')
+        }),
+        ('Metadata', {
+            'fields': ('news_provider', 'source_category', 'language', 'published_at', 'search_themes')
+        }),
+        ('Processing', {
+            'fields': ('status', 'importance_score', 'worker_id', 'version')
+        }),
+        ('Analysis', {
+            'fields': ('sentiment', 'bias', 'entities', 'geotags'),
+            'classes': ('collapse',)
+        }),
+        ('System', {
+            'fields': ('id', 'scraped_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    # Enable editing importance_score for manual correction
+    list_editable = ['status', 'importance_score']
     list_per_page = 50
 
     def title_short(self, obj):
-        title = obj.title_translated or obj.title_origin
+        title = obj.title_origin or obj.title_translated
         if len(title) > 50:
             return title[:50] + '...'
         return title

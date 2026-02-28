@@ -7,6 +7,7 @@ import os
 from celery import Celery
 from celery.signals import task_failure, task_success
 from kombu import Queue, Exchange
+from django.conf import settings
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'metriq_site.settings')
 
@@ -21,6 +22,7 @@ app.conf.task_queues = (
     Queue('batch', Exchange('batch'), routing_key='batch'),
     Queue('provider', Exchange('provider'), routing_key='provider'),
     Queue('db_writer', Exchange('db_writer'), routing_key='db_writer'),
+    Queue('llm_tasks', Exchange('llm'), routing_key='llm.tasks'),
 )
 
 app.conf.task_default_queue = 'default'
@@ -36,6 +38,7 @@ app.conf.task_routes = {
     'worker.tasks.batch.*': {'queue': 'batch', 'routing_key': 'batch'},
     'worker.tasks.provider.*': {'queue': 'provider', 'routing_key': 'provider'},
     'modules.analytics.storage.run_db_writer_batch': {'queue': 'db_writer', 'routing_key': 'db_writer'},
+    'worker.tasks.importance.*': {'queue': 'llm_tasks', 'routing_key': 'llm.tasks'},
 }
 
 # Configuration
@@ -72,12 +75,18 @@ app.conf.beat_schedule = {
         'schedule': 10.0,  # Every 10 seconds
         'options': {'queue': 'db_writer'}
     },
+    # IMPORTANT: For production with single GPU, workers processing 'llm_tasks'
+    # should run with CELERY_WORKER_CONCURRENCY=1 to prevent GPU overload.
+    # Example: celery -A worker worker -Q llm_tasks --concurrency=1
+    'classify_importance_batch': {
+        'task': 'worker.tasks.importance.classify_importance_batch',
+        'schedule': getattr(settings, 'IMPORTANCE_POLL_INTERVAL', 300.0),  # 5 minutes default
+        'options': {'queue': 'llm_tasks'}
+    },
     'cleanup_stale_locks': {
         'task': 'modules.analytics.storage.cleanup_stale_job_locks',
         'schedule': 300.0,  # Every 5 minutes
     },
-
-    # New tasks
     'cleanup_stale_jobs': {
         'task': 'worker.tasks.provider.cleanup_stale_jobs',
         'schedule': 300.0,

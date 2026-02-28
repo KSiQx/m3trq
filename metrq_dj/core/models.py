@@ -68,10 +68,6 @@ class Job(models.Model):
 
     class Meta:
         constraints = [
-        #     models.UniqueConstraint(
-        #         fields=['url', 'status'],
-        #         name='unique_url_status'
-        #     ),
             models.CheckConstraint(
                 check=models.Q(priority__gte=0, priority__lte=10),
                 name='valid_priority_range'
@@ -121,7 +117,7 @@ class Job(models.Model):
 
 
 class Article(models.Model):
-    """News articles with sentiment analysis"""
+    """News articles with sentiment analysis and multi-stage processing status"""
     LANGUAGE_CHOICES = [
         ('zh_cn', 'Chinese Simplified'),
         ('zh_tw', 'Chinese Traditional'),
@@ -129,9 +125,43 @@ class Article(models.Model):
         ('ru', 'Russian'),
     ]
 
+    STATUS_CHOICES = [
+        ('new', 'New'),
+        ('analyzing', 'Analyzing'),
+        ('analyzed', 'Analyzed'),
+        ('translating', 'Translating'),
+        ('translated', 'Translated'),
+        ('ready', 'Ready'),
+        ('skipped', 'Skipped'),
+        ('failed', 'Failed'),
+    ]
+
+    # Source category choices (Unified System IDs (Slugs)) from config/sources.json
+    SOURCE_CATEGORY_CHOICES = [
+        ('politics_domestic', 'Domestic Politics'),
+        ('politics_global', 'Global Politics'),
+        ('security_military', 'Military Security'),
+        ('security_civil', 'Civil Security'),
+        ('economy_macro', 'Macro Economy'),
+        ('economy_markets', 'Markets'),
+        ('economy_business', 'Business'),
+        ('energy_security', 'Energy Security'),
+        ('tech_strategic', 'Strategic Technology'),
+        ('resource_environment', 'Resources & Environment'),
+        ('health_science', 'Health & Science'),
+        ('regional_focus', 'Regional Focus'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     search_themes = models.CharField(max_length=255, blank=True)
     news_provider = models.CharField(max_length=255, db_index=True)
+    source_category = models.CharField(
+        max_length=30,
+        choices=SOURCE_CATEGORY_CHOICES,
+        default='politics_global',
+        db_index=True,
+        help_text="Category from JSON source configuration (e.g., politics_domestic, economy_macro)"
+    )
     published_at = models.DateField(db_index=True)
     title_origin = models.TextField()
     title_translated = models.TextField(null=True, blank=True)
@@ -148,12 +178,25 @@ class Article(models.Model):
         blank=True,
         validators=[MinValueValidator(0), MaxValueValidator(1)]
     )
+    importance_score = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+        help_text="Confidence score from importance classification (0-1)"
+    )
     entities = models.JSONField(default=dict, blank=True)
     geotags = models.JSONField(default=dict, blank=True)
     language = models.CharField(
         max_length=10,
         choices=LANGUAGE_CHOICES,
         db_index=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='new',
+        db_index=True,
+        help_text="Current stage in the processing pipeline"
     )
     scraped_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -166,6 +209,11 @@ class Article(models.Model):
             models.Index(fields=['-scraped_at']),
             models.Index(fields=['language', '-published_at']),
             models.Index(fields=['language', '-scraped_at', 'sentiment']),
+            models.Index(fields=['status', '-scraped_at']),
+            models.Index(fields=['source_category', '-scraped_at']),
+            models.Index(fields=['status', 'source_category']),
+            models.Index(fields=['status', 'importance_score']),
+            models.Index(fields=['importance_score', '-scraped_at']),
         ]
         constraints = [
             models.CheckConstraint(

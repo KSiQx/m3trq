@@ -9,6 +9,8 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
+from .choices import CONFLICT_INTENSITY_CHOICES
+
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +192,22 @@ class Article(models.Model):
         max_length=10,
         choices=LANGUAGE_CHOICES,
         db_index=True
+    )
+    # Layer E metadata
+    conflict_intensity = models.CharField(
+        max_length=20,
+        choices=CONFLICT_INTENSITY_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Overall conflict intensity (low/medium/high)"
+    )
+
+    # To store the complete structure Layer E (JSON)
+    conflict_dynamics = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Detailed Layer E conflict dynamics data"
     )
     status = models.CharField(
         max_length=20,

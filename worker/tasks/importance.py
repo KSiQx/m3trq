@@ -31,6 +31,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from core.models import Article, ProviderLog
+from core.tasks.extraction import extract_layer_a_e
 
 import structlog
 
@@ -319,7 +320,7 @@ def classify_importance_batch(self):
 
     # Future: Check if FastText model should be used
     if use_fasttext:
-        # This will be implemented when FastText model is trained
+        # TODO: This will be implemented when FastText model is trained
         logger.warning("fasttext_not_implemented_yet", fallback_to_llm=True)
 
     # Classify using LLM
@@ -363,6 +364,11 @@ def classify_importance_batch(self):
 
                 article.save(update_fields=['importance_score', 'status', 'updated_at'])
                 stats["processed"] += 1
+
+                # Trigger Task Layer A-E extraction if article is important
+                # Using on_commit ensures the task is only sent after DB transaction succeeds
+                if article.status == 'analyzing':
+                    transaction.on_commit(lambda aid=str(article.id): extract_layer_a_e.delay(aid))
 
             except Exception as e:
                 logger.error(

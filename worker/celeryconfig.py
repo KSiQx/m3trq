@@ -23,6 +23,7 @@ app.conf.task_queues = (
     Queue('provider', Exchange('provider'), routing_key='provider'),
     Queue('db_writer', Exchange('db_writer'), routing_key='db_writer'),
     Queue('llm_tasks', Exchange('llm'), routing_key='llm.tasks'),
+    Queue('llm_extraction', Exchange('llm'), routing_key='llm.extraction'),
 )
 
 app.conf.task_default_queue = 'default'
@@ -39,6 +40,7 @@ app.conf.task_routes = {
     'worker.tasks.provider.*': {'queue': 'provider', 'routing_key': 'provider'},
     'modules.analytics.storage.run_db_writer_batch': {'queue': 'db_writer', 'routing_key': 'db_writer'},
     'worker.tasks.importance.*': {'queue': 'llm_tasks', 'routing_key': 'llm.tasks'},
+    'core.tasks.extraction.*': {'queue': 'llm_extraction', 'routing_key': 'llm.extraction'},
 }
 
 # Configuration
@@ -82,6 +84,11 @@ app.conf.beat_schedule = {
         'task': 'worker.tasks.importance.classify_importance_batch',
         'schedule': getattr(settings, 'IMPORTANCE_POLL_INTERVAL', 300.0),  # 5 minutes default
         'options': {'queue': 'llm_tasks'}
+    },
+    'extract_articles': {
+        'task': 'core.tasks.extraction.batch_extract_articles',
+        'schedule': 300.0,  # Every 5 minutes
+        'kwargs': {'limit': 10}
     },
     'cleanup_stale_locks': {
         'task': 'modules.analytics.storage.cleanup_stale_job_locks',

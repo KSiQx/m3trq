@@ -41,6 +41,8 @@ metrq_dj/metrq_site/asgi.py
 metrq_dj/metrq_site/settings.py
 metrq_dj/metrq_site/urls.py
 metrq_dj/metrq_site/wsgi.py
+metrq_dj/core/choices.py
+metrq_dj/core/llm_prompts.py
 
 celerybeat-schedule
 

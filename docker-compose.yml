@@ -11,72 +11,21 @@ services:
       timeout: 3s
       retries: 3
 
-  ollama:
+  # ============================================================================
+  # OLLAMA SERVICES (4 separate instances for different workloads)
+  # ============================================================================
+
+  ollama-importance:
     image: ollama/ollama:latest
+    container_name: metrq-ollama-importance
     volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
-    # Pre-pull model on startup
-    command: >
-      sh -c "ollama serve &
-             sleep 10 &&
-             ollama pull qwen2.5-coder:1.5b &&
-             wait"
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  worker:
-    build:
-      context: .
-      dockerfile: worker/Dockerfile
+      - ollama_importance:/root/.ollama
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - OLLAMA_HOST=http://ollama:11434
-      - DEEPL_API_KEY=${DEEPL_API_KEY}
-      - DJANGO_SETTINGS_MODULE=metriq_site.settings
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - LOG_LEVEL=INFO
-    volumes:
-      - ./config:/app/config:ro
-      - ./metrq_dj:/app/metrq_dj:ro
-    depends_on:
-      redis:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
-    deploy:
-      replicas: 2  # Scale to 5 for production
-    command: celery -A worker.celeryconfig worker --loglevel=${LOG_LEVEL} --concurrency=1 --pool=prefork -Q reports_fast,reports_slow,default,batch,provider
-
-  # Dedicated worker for LLM tasks (GPU-protected)
-  worker-llm:
-    build:
-      context: .
-      dockerfile: worker/Dockerfile
-    command: >
-      celery -A worker worker 
-      -Q llm_tasks 
-      --concurrency=1 
-      --loglevel=info 
-      -n llm-worker@%h
-    environment:
-      - DJANGO_SETTINGS_MODULE=metriq_site.settings
-      - OLLAMA_HOST=http://ollama:11434
-      - CELERY_BROKER_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-      - ollama
-    volumes:
-      - ./metrq_dj:/app/metrq_dj
-      - ./worker:/app/worker
-      - ./modules:/app/modules
-      - ./config:/app/config
-    # If using GPU:
+      - OLLAMA_HOST=0.0.0.0:11434
+    # Internal port only - no host exposure for security
+    expose:
+      - "11434"
+    # GPU support - uncomment if available
     # deploy:
     #   resources:
     #     reservations:
@@ -84,42 +33,263 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
+  ollama-extraction:
+    image: ollama/ollama:latest
+    container_name: metrq-ollama-extraction
+    volumes:
+      - ollama_extraction:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    expose:
+      - "11434"
+    # GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
+  ollama-translate:
+    image: ollama/ollama:latest
+    container_name: metrq-ollama-translate
+    volumes:
+      - ollama_translate:/root/.ollama
+    # Only expose to host if you need external access; otherwise use 'expose:'
+    ports:
+      - "11434:11434"  # Host access for HY-MT model
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # GPU support (uncomment if GPU available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+  ollama-postprocess:
+    image: ollama/ollama:latest
+    container_name: metrq-ollama-postprocess
+    volumes:
+      - ollama_postprocess:/root/.ollama
+    ports:
+      - "11435:11434"  # Host access on different port
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # GPU support (uncomment if GPU available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    restart: unless-stopped
+
+  # ============================================================================
+  # MODEL INITIALIZATION (runs once after Ollama services start)
+  # ============================================================================
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama-importance:
+        condition: service_healthy
+      ollama-extraction:
+        condition: service_healthy
+      ollama-translate:
+        condition: service_healthy
+      ollama-postprocess:
+        condition: service_healthy
+    # Mount all volumes to pull models into each service's storage
+    volumes:
+      - ollama_importance:/root/.ollama_importance
+      - ollama_extraction:/root/.ollama_extraction
+      - ollama_translate:/root/.ollama_translate
+      - ollama_postprocess:/root/.ollama_postprocess
+    entrypoint: >
+      sh -c "
+        set -e
+        echo '========================================' &&
+        echo 'Initializing Ollama Models...' &&
+        echo '========================================' &&
+        
+        echo '[1/4] Pulling qwen2.5-coder:1.5b for importance classification...' &&
+        OLLAMA_HOST=http://ollama-importance:11434 ollama pull qwen2.5-coder:1.5b &&
+        
+        echo '[2/4] Pulling qwen2.5-coder:1.5b for extraction...' &&
+        OLLAMA_HOST=http://ollama-extraction:11434 ollama pull qwen2.5-coder:1.5b &&
+        
+        echo '[3/4] Pulling sun_leaf/HY-MT:1.5b for translation...' &&
+        OLLAMA_HOST=http://ollama-translate:11434 ollama pull sun_leaf/HY-MT:1.5b &&
+        
+        echo '[4/4] Pulling qwen2.5-coder:1.5b for postprocessing...' &&
+        OLLAMA_HOST=http://ollama-postprocess:11434 ollama pull qwen2.5-coder:1.5b &&
+        
+        echo '========================================' &&
+        echo 'All models initialized successfully!' &&
+        echo '========================================'
+      "
+    restart: "no"
+
+  # ============================================================================
+  # WORKER SERVICES
+  # ============================================================================
+
+  # General purpose workers (reports, batch processing)
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    environment:
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./config:/app/config:ro
+      - ./metrq_dj:/app/metrq_dj
+      - ./worker:/app/worker
+      - ./modules:/app/modules
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2  # Scale to 5 for production
+    command: >
+      celery -A worker.celeryconfig worker 
+      --loglevel=$${LOG_LEVEL:-INFO} 
+      --concurrency=1 
+      --pool=prefork 
+      -Q reports_fast,reports_slow,default,batch,provider,translation
+    restart: unless-stopped
+
+  # Dedicated worker for LLM tasks (GPU-protected, single concurrency)
+  worker-llm:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    command: >
+      celery -A worker worker
+      -Q llm_tasks,llm_extraction,llm_translate,llm_postprocess
+      --concurrency=1
+      --loglevel=info
+      -n llm-worker@%h
+      --pool=prefork
+    environment:
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # Ollama endpoints for different queues
+      - OLLAMA_HOST=http://ollama-importance:11434
+      - OLLAMA_EXTRACTION_HOST=http://ollama-extraction:11434
+      - OLLAMA_TRANSLATE_HOST=http://ollama-translate:11434
+      - OLLAMA_POSTPROCESS_HOST=http://ollama-postprocess:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama-importance:
+        condition: service_healthy
+      ollama-extraction:
+        condition: service_healthy
+      ollama-translate:
+        condition: service_healthy
+      ollama-postprocess:
+        condition: service_healthy
+    volumes:
+      - ./metrq_dj:/app/metrq_dj
+      - ./worker:/app/worker
+      - ./modules:/app/modules
+      - ./config:/app/config
+    restart: unless-stopped
+
+  # Celery Beat (scheduler)
   beat:
     build:
       context: .
       dockerfile: worker/Dockerfile
     environment:
-      - REDIS_URL=redis://redis:6379/0
       - DJANGO_SETTINGS_MODULE=metriq_site.settings
+      - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./config:/app/config:ro
-      - ./metrq_dj:/app/metrq_dj:ro
+      - ./metrq_dj:/app/metrq_dj
+      - ./worker:/app/worker
+      - ./modules:/app/modules
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     command: celery -A worker.celeryconfig beat --loglevel=INFO
+    restart: unless-stopped
 
+  # DB Writer (single-writer pattern for SQLite)
   db_writer:
     build:
       context: .
       dockerfile: worker/Dockerfile
     environment:
+      - DJANGO_SETTINGS_MODULE=metriq_site.settings
       - SQLITE_PATH=/data/db.sqlite3
       - REDIS_URL=redis://redis:6379/0
-      - DJANGO_SETTINGS_MODULE=metriq_site.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - sqlite_data:/data
       - ./modules:/app/modules:ro
+      - ./metrq_dj:/app/metrq_dj
     depends_on:
-      - redis
-    command: celery -A worker.celeryconfig worker -Q db_writer -P solo
+      redis:
+        condition: service_healthy
+    command: celery -A worker.celeryconfig worker -Q db_writer -P solo --loglevel=INFO
+    restart: unless-stopped
 
+# ============================================================================
+# VOLUMES
+# ============================================================================
 volumes:
   redis_data:
-  ollama_data:
+  ollama_importance:
+    driver: local
+  ollama_extraction:
+    driver: local
+  ollama_translate:
+    driver: local
+  ollama_postprocess:
+    driver: local
   sqlite_data:
+    driver: local

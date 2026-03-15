@@ -220,6 +220,12 @@ class Article(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     worker_id = models.CharField(max_length=255, null=True, blank=True)
     version = models.IntegerField(default=1)
+    translator = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Translation service used: 'google', 'yandex', 'HY-MT:1.8b', etc."
+    )
 
     class Meta:
         indexes = [

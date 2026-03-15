@@ -24,6 +24,9 @@ app.conf.task_queues = (
     Queue('db_writer', Exchange('db_writer'), routing_key='db_writer'),
     Queue('llm_tasks', Exchange('llm'), routing_key='llm.tasks'),
     Queue('llm_extraction', Exchange('llm'), routing_key='llm.extraction'),
+    Queue('translation', Exchange('translation'), routing_key='translation'),
+    Queue('llm_translate', Exchange('llm'), routing_key='llm.translate'),
+    Queue('llm_postprocess', Exchange('llm'), routing_key='llm.postprocess'),
 )
 
 app.conf.task_default_queue = 'default'
@@ -41,6 +44,14 @@ app.conf.task_routes = {
     'modules.analytics.storage.run_db_writer_batch': {'queue': 'db_writer', 'routing_key': 'db_writer'},
     'worker.tasks.importance.*': {'queue': 'llm_tasks', 'routing_key': 'llm.tasks'},
     'core.tasks.extraction.*': {'queue': 'llm_extraction', 'routing_key': 'llm.extraction'},
+    'core.tasks.translation.translate_article': {
+        'queue': 'translation',
+        'routing_key': 'translation'
+    },
+    'core.tasks.translation.improve_translation': {
+        'queue': 'llm_postprocess',
+        'routing_key': 'llm.postprocess'
+    },
 }
 
 # Configuration
@@ -51,8 +62,8 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     task_track_started=True,
-    task_time_limit=300,
-    task_soft_time_limit=240,
+    task_time_limit=600,
+    task_soft_time_limit=540,
     result_backend=os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
     result_expires=3600,
     worker_prefetch_multiplier=1,
@@ -88,7 +99,13 @@ app.conf.beat_schedule = {
     'extract_articles': {
         'task': 'core.tasks.extraction.batch_extract_articles',
         'schedule': 300.0,  # Every 5 minutes
-        'kwargs': {'limit': 10}
+        'kwargs': {'limit': 10},
+        'options': {'queue': 'llm_extraction'}
+    },
+    'process_translations': {
+        'task': 'core.tasks.translation.process_translation_queue',
+        'schedule': 60.0,  # Every minute
+        'options': {'queue': 'translation'}
     },
     'cleanup_stale_locks': {
         'task': 'modules.analytics.storage.cleanup_stale_job_locks',
@@ -121,7 +138,15 @@ app.conf.beat_schedule = {
     },
 }
 
-app.autodiscover_tasks(['worker.tasks.batch', 'worker.tasks.provider', 'worker.tasks.reports', 'modules.analytics.storage'])
+app.autodiscover_tasks([
+    'worker.tasks.batch',
+    'worker.tasks.provider',
+    'worker.tasks.reports',
+    'worker.tasks.importance',
+    'modules.analytics.storage',
+    'core.tasks.extraction',
+    'core.tasks.translation',
+])
 
 @task_failure.connect
 def handle_task_failure(sender, task_id, exception, args, kwargs, traceback, einfo, **extras):
@@ -134,33 +159,3 @@ def handle_task_success(sender, result, **kwargs):
     import structlog
     logger = structlog.get_logger()
     logger.info("task_succeeded", task_name=sender.name if sender else 'unknown')
-
-
-# from celery import Celery
-# import os
-#
-# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'metriq_site.settings')
-#
-# app = Celery('metrq')
-# app.config_from_object('django.conf:settings', namespace='CELERY')
-# app.autodiscover_tasks()
-#
-# app.conf.beat_schedule = {
-#     'fetch_rss': {
-#         'task': 'worker.tasks.batch.fetch_and_enqueue',
-#         'schedule': 60.0 * 5,  # Every 5 minutes
-#     },
-#     'cleanup_stale': {
-#         'task': 'worker.tasks.batch.cleanup_stale_jobs',
-#         'schedule': 60.0 * 5,  # Every 5 minutes
-#     },
-#     'db_writer_batch': {
-#         'task': 'modules.analytics.storage.run_db_writer_batch',
-#         'schedule': 10.0,  # Every 10 seconds
-#         'options': {'queue': 'db_writer'}
-#     },
-#     'cleanup_stale_locks': {
-#         'task': 'modules.analytics.storage.cleanup_stale_job_locks',
-#         'schedule': 300.0,  # Every 5 minutes
-#     },
-# }

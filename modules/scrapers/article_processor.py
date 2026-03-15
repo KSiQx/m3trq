@@ -156,21 +156,21 @@ class ArticleProcessor:
         Uses asyncio.to_thread to prevent blocking on LLM inference.
         """
         prompt = f"""Analyze this news text and extract:
-1. Key entities (persons, organizations, terms, events)
-2. Geographic locations mentioned
-
-Respond ONLY in JSON format like:
-{{
-  "persons": ["Name", "Name"],
-  "organizations": ["Org"],
-  "terms": ["term"],
-  "events": ["Event"],
-  "locations": ["City", "Country"]
-}}
-
-Text: {text[:2000]}
-
-JSON:"""
+        1. Key entities (persons, organizations, terms, events)
+        2. Geographic locations mentioned
+        
+        Respond ONLY in JSON format like:
+        {{
+          "persons": ["Name", "Name"],
+          "organizations": ["Org"],
+          "terms": ["term"],
+          "events": ["Event"],
+          "locations": ["City", "Country"]
+        }}
+        
+        Text: {text[:2000]}
+        
+        JSON:"""
 
         try:
             loop = asyncio.get_event_loop()

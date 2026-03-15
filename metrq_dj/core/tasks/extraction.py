@@ -584,16 +584,11 @@ def extract_layer_a_e(self, article_id: str):
         raise self.retry(exc=e, countdown=120)
 
 
-@shared_task(queue='llm_extraction')
-def batch_extract_articles(limit: int = 10):
+@shared_task(bind=True, max_retries=3)
+def batch_extract_articles(self, limit: int = 10):
     """
-    Batch process articles awaiting extraction.
-
-    Args:
-        limit: Maximum number of articles to process in this batch
-
-    Returns:
-        Dict with batch processing results
+    Batch extract Layer A-E data from articles.
+    After successful extraction, trigger translation.
     """
     logger.info(f"Starting batch extraction for up to {limit} articles")
 
@@ -616,10 +611,20 @@ def batch_extract_articles(limit: int = 10):
             # Queue individual extraction task
             extract_layer_a_e.delay(str(article.id))
             results['queued'] += 1
-        except Exception as e:
-            logger.error(f"Failed to queue extraction for {article.id}: {e}")
-            results['failed'] += 1
-            results['errors'].append(str(article.id))
 
-    logger.info(f"Batch extraction queued: {results}")
-    return results
+            # Mark as analyzed
+            article.status = 'analyzed'
+            article.save(update_fields=['status', 'updated_at'])
+
+            # Trigger translation pipeline
+            from .translation import translate_article
+            translate_article.delay(str(article.id))
+
+            logger.info(f"Extraction complete, translation queued for {article.id}")
+        except Exception as e:
+            logger.error(f"Extraction failed for {article.id}: {e}")
+            article.status = 'failed'
+            article.save(update_fields=['status', 'updated_at'])
+
+
+    return {"processed": len(articles)}
